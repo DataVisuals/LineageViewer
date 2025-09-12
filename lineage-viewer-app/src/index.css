@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@layer base {
+  * {
+    @apply border-secondary-200;
+  }
+  
+  body {
+    @apply bg-secondary-50 text-secondary-900 font-sans;
+  }
+}
+
+@layer components {
+  .node-table {
+    @apply bg-white rounded-lg shadow-md border border-secondary-200 p-4 min-w-[200px];
+  }
+  
+  .node-column {
+    @apply bg-primary-50 rounded-md border border-primary-200 p-2 text-sm;
+  }
+  
+  .edge-lineage {
+    @apply stroke-primary-400 stroke-2;
+  }
+  
+  .edge-column {
+    @apply stroke-secondary-400 stroke-1;
+  }
+  
+  .control-panel {
+    @apply bg-white rounded-lg shadow-md border border-secondary-200 p-4;
+  }
+  
+  .toggle-button {
+    @apply px-4 py-2 rounded-md font-medium transition-colors duration-200;
+  }
+  
+  .toggle-button-active {
+    @apply bg-primary-600 text-white;
+  }
+  
+  .toggle-button-inactive {
+    @apply bg-secondary-100 text-secondary-700 hover:bg-secondary-200;
+  }
+}

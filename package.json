@@ -1,0 +1,19 @@
+{
+  "name": "lineageviewer",
+  "version": "1.0.0",
+  "description": "A comprehensive solution for extracting, loading, and visualizing column-level data lineage using Marquez with a beautiful React frontend.",
+  "main": "cors-proxy-server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "axios": "^1.11.0",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "http-proxy-middleware": "^3.0.5"
+  }
+}

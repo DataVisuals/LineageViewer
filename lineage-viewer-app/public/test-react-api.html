@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>React API Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test { margin: 20px 0; padding: 20px; border: 1px solid #ddd; border-radius: 8px; }
+        .success { background: #d4edda; border-color: #c3e6cb; }
+        .error { background: #f8d7da; border-color: #f5c6cb; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 4px; overflow-x: auto; }
+        button { padding: 10px 20px; margin: 10px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>🔍 React API Test</h1>
+    <button onclick="testReactAPI()">Test React API Call</button>
+    <div id="results"></div>
+    
+    <script>
+        async function testReactAPI() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<p>Testing React API call...</p>';
+            
+            try {
+                console.log('Testing React API call to backend proxy...');
+                
+                // This simulates what the React app should be doing
+                const response = await fetch('http://localhost:3004/api/namespaces/data_pipeline/jobs', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                });
+                
+                console.log('Response status:', response.status);
+                console.log('Response headers:', [...response.headers.entries()]);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('Data received:', data);
+                    
+                    resultsDiv.innerHTML = `
+                        <div class="test success">
+                            <h3>✅ React API Test Success</h3>
+                            <p>Status: ${response.status}</p>
+                            <p>Jobs found: ${data.totalCount}</p>
+                            <p>Jobs: ${data.jobs?.map(j => j.name).join(', ')}</p>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </div>
+                    `;
+                } else {
+                    resultsDiv.innerHTML = `
+                        <div class="test error">
+                            <h3>❌ React API Test Failed</h3>
+                            <p>Status: ${response.status}</p>
+                            <p>Status Text: ${response.statusText}</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                resultsDiv.innerHTML = `
+                    <div class="test error">
+                        <h3>❌ React API Test Error</h3>
+                        <p>Error: ${error.message}</p>
+                        <p>Type: ${error.name}</p>
+                    </div>
+                `;
+            }
+        }
+        
+        // Auto-run test when page loads
+        window.onload = testReactAPI;
+    </script>
+</body>
+</html>

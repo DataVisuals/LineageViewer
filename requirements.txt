@@ -1,0 +1,5 @@
+openlineage-python==1.4.1
+requests==2.31.0
+pandas==2.1.4
+PyYAML==6.0.1
+sqlparse==0.4.4
