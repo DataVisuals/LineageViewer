@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
-import { Workflow, Database } from 'lucide-react';
+import { Workflow, Database, GitBranch } from 'lucide-react';
 import CytoscapeLineageGraph from './components/CytoscapeLineageGraph';
 import ControlPanel from './components/ControlPanel';
 import ColumnTracer from './components/ColumnTracer';
 import DataBrowser from './components/DataBrowser';
+import ColumnLineageViewer from './components/ColumnLineageViewer';
 import { marquezApi } from './services/marquezApi';
 import { ViewMode, ColumnTransform } from './types/lineage';
 
@@ -20,7 +21,7 @@ const AppContent: React.FC = () => {
   });
   const [selectedColumn, setSelectedColumn] = useState<ColumnTransform | undefined>();
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<'graph' | 'browser'>('graph');
+  const [activeTab, setActiveTab] = useState<'graph' | 'browser' | 'columns'>('graph');
   const [layoutAlgorithm, setLayoutAlgorithm] = useState<'hierarchical' | 'circular' | 'grid' | 'force' | 'flow' | 'dag' | 'sugiyama' | 'manual'>('dag');
   const [edgeLength, setEdgeLength] = useState(100); // Default to shorter edges
   const [layoutParams, setLayoutParams] = useState({
@@ -299,6 +300,17 @@ const AppContent: React.FC = () => {
                 <Database className="w-4 h-4 inline mr-2" />
                 Data Browser
               </button>
+              <button
+                onClick={() => setActiveTab('columns')}
+                className={`px-4 py-2 text-sm font-medium border-b-2 ${
+                  activeTab === 'columns'
+                    ? 'border-primary-600 text-primary-600'
+                    : 'border-transparent text-secondary-600 hover:text-secondary-900'
+                }`}
+              >
+                <GitBranch className="w-4 h-4 inline mr-2" />
+                Column Lineage
+              </button>
             </div>
           </div>
 
@@ -326,6 +338,26 @@ const AppContent: React.FC = () => {
                 transforms={highlightedGraph.transforms || []}
                 onNodeClick={handleNodeClick}
               />
+            )}
+            {activeTab === 'columns' && highlightedGraph && (
+              <div className="h-full overflow-y-auto p-6">
+                <ColumnLineageViewer
+                  graph={highlightedGraph}
+                  selectedColumn={selectedColumn?.id}
+                  onColumnSelect={(columnKey) => {
+                    console.log('Column selected:', columnKey);
+                    // Find the column transform by the column key
+                    const [namespace, dataset, field] = columnKey.split('.');
+                    const transform = highlightedGraph.transforms?.find(t => 
+                      t.inputFields.some(f => f.namespace === namespace && f.name === dataset && f.field === field) ||
+                      t.outputField === field
+                    );
+                    if (transform) {
+                      setSelectedColumn(transform);
+                    }
+                  }}
+                />
+              </div>
             )}
             {searchQuery && highlightedGraph && (!highlightedGraph.nodes || highlightedGraph.nodes.length === 0) && (
               <div className="flex items-center justify-center h-full">

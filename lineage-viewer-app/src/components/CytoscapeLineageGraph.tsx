@@ -500,6 +500,59 @@ const CytoscapeLineageGraph: React.FC<CytoscapeLineageGraphProps> = ({
         content += `</div>`;
       }
       
+      // Column Lineage Information Section (for transforms with column lineage)
+      if (data.type === 'job' && data.data?.transforms) {
+        const jobData = data.data;
+        const transformsWithLineage = jobData.transforms.filter((transform: any) => 
+          transform.columnLineage && transform.columnLineage.length > 0
+        );
+        
+        if (transformsWithLineage.length > 0) {
+          content += `<div style="margin-bottom: 12px; padding: 8px; background: #1f2937; border-radius: 6px;">`;
+          content += `<div style="color: #e5e7eb; font-size: 12px; font-weight: bold; margin-bottom: 6px;">Column Lineage</div>`;
+          
+          transformsWithLineage.forEach((transform: any, transformIndex: number) => {
+            content += `<div style="margin-bottom: 8px; padding: 6px; background: #374151; border-radius: 4px;">`;
+            content += `<div style="color: #fbbf24; font-size: 11px; font-weight: bold; margin-bottom: 4px;">${transform.name || `Transform ${transformIndex + 1}`}</div>`;
+            
+            transform.columnLineage.forEach((lineage: any, lineageIndex: number) => {
+              const inputField = lineage.inputField;
+              const outputField = lineage.outputField;
+              const transformType = lineage.transformType || 'TRANSFORM';
+              const description = lineage.description || '';
+              
+              content += `<div style="margin-bottom: 4px; padding: 4px; background: #1f2937; border-radius: 3px; border-left: 3px solid #3b82f6;">`;
+              
+              // Input field
+              content += `<div style="color: #ef4444; font-size: 10px; margin-bottom: 2px;">`;
+              content += `<strong>FROM:</strong> ${inputField.namespace}.${inputField.name}.${inputField.field}`;
+              content += `</div>`;
+              
+              // Transform type and description
+              content += `<div style="color: #fbbf24; font-size: 10px; margin-bottom: 2px;">`;
+              content += `<strong>${transformType}:</strong> ${description}`;
+              content += `</div>`;
+              
+              // Output field
+              content += `<div style="color: #10b981; font-size: 10px;">`;
+              content += `<strong>TO:</strong> ${outputField.namespace}.${outputField.name}.${outputField.field}`;
+              content += `</div>`;
+              
+              // Show SQL if available
+              if (lineage.sql) {
+                const sqlPreview = lineage.sql.length > 100 ? lineage.sql.substring(0, 100) + '...' : lineage.sql;
+                content += `<div style="margin-top: 3px; color: #6b7280; font-size: 9px; font-family: monospace; background: #111827; padding: 3px; border-radius: 2px; white-space: pre-wrap;">${sqlPreview}</div>`;
+              }
+              
+              content += `</div>`;
+            });
+            
+            content += `</div>`;
+          });
+          
+          content += `</div>`;
+        }
+      }
 
         tooltipRef.current.innerHTML = content;
         document.body.appendChild(tooltipRef.current);

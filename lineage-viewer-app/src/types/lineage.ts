@@ -8,6 +8,22 @@ export type LayoutAlgorithm =
   | 'sugiyama' 
   | 'manual';
 
+export interface ColumnLineage {
+  inputField: {
+    namespace: string;
+    name: string;
+    field: string;
+  };
+  outputField: {
+    namespace: string;
+    name: string;
+    field: string;
+  };
+  transformType: 'DIRECT_COPY' | 'AGGREGATION' | 'CALCULATION' | 'CONDITIONAL' | 'JOIN' | 'FILTER' | 'OTHER';
+  description: string;
+  sql?: string;
+}
+
 export interface ColumnTransform {
   id: string;
   name: string;
@@ -27,6 +43,7 @@ export interface ColumnTransform {
   sql?: string;
   pythonCode?: string;
   sparkCode?: string;
+  columnLineage?: ColumnLineage[];
 }
 
 export interface Dataset {

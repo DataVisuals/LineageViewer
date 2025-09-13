@@ -303,73 +303,169 @@ export class MarquezApiService {
       }
     });
 
-    // Add DBT-based transformations (simulated data for demonstration)
-    // In a real implementation, this would extract from actual DBT files
+    // Add DBT-based transformations with comprehensive column-level lineage
+    // This demonstrates how column X in dataset A transforms to column Y in dataset B
     const dbtTransforms: ColumnTransform[] = [
+      // Customer ID: raw_customers.id -> customer_aggregation.customer_id -> mart_customer_summary.customer_id
       {
         id: 'dbt_customer_aggregation_customer_id',
         name: 'customer_id transform',
         transformType: 'DBT_TRANSFORM',
         transform: 'customer_id',
-        description: 'dbt transform in customer_aggregation',
+        description: 'dbt transform: raw_customers.id -> customer_aggregation.customer_id',
         inputFields: [{ namespace: 'data_pipeline', name: 'raw_customers', field: 'id' }],
         outputField: 'customer_id',
         dataset: 'customer_aggregation',
         sql: 'SELECT id as customer_id FROM raw_customers',
         language: 'dbt',
-        sourceFile: 'models/marts/customer_aggregation.sql'
+        sourceFile: 'models/marts/customer_aggregation.sql',
+        columnLineage: [
+          {
+            inputField: { namespace: 'data_pipeline', name: 'raw_customers', field: 'id' },
+            outputField: { namespace: 'data_pipeline', name: 'customer_aggregation', field: 'customer_id' },
+            transformType: 'DIRECT_COPY',
+            description: 'Direct field mapping with rename',
+            sql: 'SELECT id as customer_id FROM raw_customers'
+          }
+        ]
       },
+      // Total Orders: raw_orders.order_id -> customer_aggregation.total_orders (aggregated)
       {
         id: 'dbt_customer_aggregation_total_orders',
         name: 'total_orders transform',
         transformType: 'DBT_TRANSFORM',
-        transform: 'COUNT(orders.id) as total_orders',
-        description: 'dbt transform in customer_aggregation',
-        inputFields: [{ namespace: 'data_pipeline', name: 'raw_orders', field: 'id' }],
+        transform: 'total_orders',
+        description: 'dbt transform: raw_orders.order_id -> customer_aggregation.total_orders (COUNT)',
+        inputFields: [{ namespace: 'data_pipeline', name: 'raw_orders', field: 'order_id' }],
         outputField: 'total_orders',
         dataset: 'customer_aggregation',
-        sql: 'SELECT COUNT(orders.id) as total_orders FROM raw_orders orders',
+        sql: 'SELECT COUNT(order_id) as total_orders FROM raw_orders GROUP BY customer_id',
         language: 'dbt',
-        sourceFile: 'models/marts/customer_aggregation.sql'
+        sourceFile: 'models/marts/customer_aggregation.sql',
+        columnLineage: [
+          {
+            inputField: { namespace: 'data_pipeline', name: 'raw_orders', field: 'order_id' },
+            outputField: { namespace: 'data_pipeline', name: 'customer_aggregation', field: 'total_orders' },
+            transformType: 'AGGREGATION',
+            description: 'COUNT aggregation of order_id grouped by customer_id',
+            sql: 'SELECT COUNT(order_id) as total_orders FROM raw_orders GROUP BY customer_id'
+          }
+        ]
       },
+      // Average Order Value: raw_orders.amount -> customer_aggregation.avg_order_value (aggregated)
       {
         id: 'dbt_customer_aggregation_avg_order_value',
         name: 'avg_order_value transform',
         transformType: 'DBT_TRANSFORM',
-        transform: 'AVG(orders.amount) as avg_order_value',
-        description: 'dbt transform in customer_aggregation',
+        transform: 'avg_order_value',
+        description: 'dbt transform: raw_orders.amount -> customer_aggregation.avg_order_value (AVG)',
         inputFields: [{ namespace: 'data_pipeline', name: 'raw_orders', field: 'amount' }],
         outputField: 'avg_order_value',
         dataset: 'customer_aggregation',
-        sql: 'SELECT AVG(orders.amount) as avg_order_value FROM raw_orders orders',
+        sql: 'SELECT AVG(amount) as avg_order_value FROM raw_orders GROUP BY customer_id',
         language: 'dbt',
-        sourceFile: 'models/marts/customer_aggregation.sql'
+        sourceFile: 'models/marts/customer_aggregation.sql',
+        columnLineage: [
+          {
+            inputField: { namespace: 'data_pipeline', name: 'raw_orders', field: 'amount' },
+            outputField: { namespace: 'data_pipeline', name: 'customer_aggregation', field: 'avg_order_value' },
+            transformType: 'AGGREGATION',
+            description: 'AVG aggregation of amount grouped by customer_id',
+            sql: 'SELECT AVG(amount) as avg_order_value FROM raw_orders GROUP BY customer_id'
+          }
+        ]
       },
+      // Processed Amount: raw_transactions.amount -> processed_data.processed_amount (calculation)
       {
-        id: 'dbt_data_transformer_processed_amount',
+        id: 'dbt_processed_data_processed_amount',
         name: 'processed_amount transform',
         transformType: 'DBT_TRANSFORM',
-        transform: 'ROUND(amount * 1.1, 2) as processed_amount',
-        description: 'dbt transform in data_transformer',
+        transform: 'processed_amount',
+        description: 'dbt transform: raw_transactions.amount -> processed_data.processed_amount (amount * 1.1)',
         inputFields: [{ namespace: 'data_pipeline', name: 'raw_transactions', field: 'amount' }],
         outputField: 'processed_amount',
         dataset: 'processed_data',
         sql: 'SELECT ROUND(amount * 1.1, 2) as processed_amount FROM raw_transactions',
         language: 'dbt',
-        sourceFile: 'models/staging/data_transformer.sql'
+        sourceFile: 'models/staging/data_transformer.sql',
+        columnLineage: [
+          {
+            inputField: { namespace: 'data_pipeline', name: 'raw_transactions', field: 'amount' },
+            outputField: { namespace: 'data_pipeline', name: 'processed_data', field: 'processed_amount' },
+            transformType: 'CALCULATION',
+            description: 'Mathematical transformation: ROUND(amount * 1.1, 2) (10% markup)',
+            sql: 'SELECT ROUND(amount * 1.1, 2) as processed_amount FROM raw_transactions'
+          }
+        ]
       },
+      // Category: raw_transactions.type -> processed_data.category (conditional logic)
       {
-        id: 'dbt_data_transformer_category',
+        id: 'dbt_processed_data_category',
         name: 'category transform',
         transformType: 'DBT_TRANSFORM',
-        transform: 'UPPER(category) as category',
-        description: 'dbt transform in data_transformer',
-        inputFields: [{ namespace: 'data_pipeline', name: 'raw_transactions', field: 'category' }],
+        transform: 'category',
+        description: 'dbt transform: raw_transactions.type -> processed_data.category (CASE statement)',
+        inputFields: [{ namespace: 'data_pipeline', name: 'raw_transactions', field: 'type' }],
         outputField: 'category',
         dataset: 'processed_data',
-        sql: 'SELECT UPPER(category) as category FROM raw_transactions',
+        sql: "SELECT CASE WHEN type = 'purchase' THEN 'sales' ELSE 'other' END as category FROM raw_transactions",
         language: 'dbt',
-        sourceFile: 'models/staging/data_transformer.sql'
+        sourceFile: 'models/staging/data_transformer.sql',
+        columnLineage: [
+          {
+            inputField: { namespace: 'data_pipeline', name: 'raw_transactions', field: 'type' },
+            outputField: { namespace: 'data_pipeline', name: 'processed_data', field: 'category' },
+            transformType: 'CONDITIONAL',
+            description: "CASE statement: purchase -> sales, others -> other",
+            sql: "SELECT CASE WHEN type = 'purchase' THEN 'sales' ELSE 'other' END as category FROM raw_transactions"
+          }
+        ]
+      },
+      // Customer ID Copy: customer_aggregation.customer_id -> mart_customer_summary.customer_id
+      {
+        id: 'dbt_mart_customer_summary_customer_id',
+        name: 'customer_id copy',
+        transformType: 'DBT_TRANSFORM',
+        transform: 'customer_id',
+        description: 'dbt transform: customer_aggregation.customer_id -> mart_customer_summary.customer_id (direct copy)',
+        inputFields: [{ namespace: 'data_pipeline', name: 'customer_aggregation', field: 'customer_id' }],
+        outputField: 'customer_id',
+        dataset: 'mart_customer_summary',
+        sql: 'SELECT customer_id FROM customer_aggregation',
+        language: 'dbt',
+        sourceFile: 'models/marts/mart_customer_summary.sql',
+        columnLineage: [
+          {
+            inputField: { namespace: 'data_pipeline', name: 'customer_aggregation', field: 'customer_id' },
+            outputField: { namespace: 'data_pipeline', name: 'mart_customer_summary', field: 'customer_id' },
+            transformType: 'DIRECT_COPY',
+            description: 'Direct field copy from customer_aggregation to mart_customer_summary',
+            sql: 'SELECT customer_id FROM customer_aggregation'
+          }
+        ]
+      },
+      // Total Orders Copy: customer_aggregation.total_orders -> mart_customer_summary.total_orders
+      {
+        id: 'dbt_mart_customer_summary_total_orders',
+        name: 'total_orders copy',
+        transformType: 'DBT_TRANSFORM',
+        transform: 'total_orders',
+        description: 'dbt transform: customer_aggregation.total_orders -> mart_customer_summary.total_orders (direct copy)',
+        inputFields: [{ namespace: 'data_pipeline', name: 'customer_aggregation', field: 'total_orders' }],
+        outputField: 'total_orders',
+        dataset: 'mart_customer_summary',
+        sql: 'SELECT total_orders FROM customer_aggregation',
+        language: 'dbt',
+        sourceFile: 'models/marts/mart_customer_summary.sql',
+        columnLineage: [
+          {
+            inputField: { namespace: 'data_pipeline', name: 'customer_aggregation', field: 'total_orders' },
+            outputField: { namespace: 'data_pipeline', name: 'mart_customer_summary', field: 'total_orders' },
+            transformType: 'DIRECT_COPY',
+            description: 'Direct field copy from customer_aggregation to mart_customer_summary',
+            sql: 'SELECT total_orders FROM customer_aggregation'
+          }
+        ]
       }
     ];
 
