@@ -8,6 +8,7 @@ import DataBrowser from './components/DataBrowser';
 import ColumnLineageGraph from './components/ColumnLineageGraph';
 import { marquezApi } from './services/marquezApi';
 import { ViewMode, ColumnTransform } from './types/lineage';
+import { ThemeProvider } from './contexts/ThemeContext';
 
 // Debug: Check what's being imported
 console.log('🔧 App.tsx - marquezApi imported:', marquezApi);
@@ -30,6 +31,9 @@ const AppContent: React.FC = () => {
     iterations: 150,
     damping: 0.7
   });
+  // Column lineage specific state
+  const [columnLayout, setColumnLayout] = useState<'dagre' | 'hierarchical' | 'circular' | 'grid'>('dagre');
+  const [showTransformNodes, setShowTransformNodes] = useState(true);
 
 
   const { data: graph, isLoading, error } = useQuery({
@@ -270,6 +274,11 @@ const AppContent: React.FC = () => {
             onEdgeLengthChange={handleEdgeLengthChange}
             layoutParams={layoutParams}
             onLayoutParamsChange={handleLayoutParamsChange}
+            activeTab={activeTab}
+            columnLayout={columnLayout}
+            onColumnLayoutChange={setColumnLayout}
+            showTransformNodes={showTransformNodes}
+            onShowTransformNodesChange={setShowTransformNodes}
           />
         </div>
 
@@ -359,6 +368,8 @@ const AppContent: React.FC = () => {
                   console.log('Transform selected:', transform);
                   setSelectedColumn(transform);
                 }}
+                layout={columnLayout}
+                showTransformNodes={showTransformNodes}
               />
             )}
             {searchQuery && highlightedGraph && (!highlightedGraph.nodes || highlightedGraph.nodes.length === 0) && (
@@ -411,9 +422,11 @@ const AppContent: React.FC = () => {
 
 const App: React.FC = () => {
   return (
-    <QueryClientProvider client={queryClient}>
-      <AppContent />
-    </QueryClientProvider>
+    <ThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <AppContent />
+      </QueryClientProvider>
+    </ThemeProvider>
   );
 };
 

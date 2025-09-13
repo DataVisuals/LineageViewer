@@ -1,7 +1,8 @@
 import React from 'react';
-import { Settings, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Database, Cpu, BarChart3, Code } from 'lucide-react';
+import { Settings, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Database, Cpu, BarChart3, Code, GitBranch, Workflow } from 'lucide-react';
 import { ViewMode } from '../types/lineage';
 import AutocompleteSearch from './AutocompleteSearch';
+import ThemeSelector from './ThemeSelector';
 
 type LayoutAlgorithm = 'hierarchical' | 'circular' | 'grid' | 'force' | 'flow' | 'dag' | 'sugiyama' | 'manual';
 
@@ -29,6 +30,12 @@ interface ControlPanelProps {
     damping?: number;
   };
   onLayoutParamsChange?: (params: any) => void;
+  activeTab?: 'graph' | 'browser' | 'columns';
+  // Column lineage specific props
+  columnLayout?: 'dagre' | 'hierarchical' | 'circular' | 'grid';
+  onColumnLayoutChange?: (layout: 'dagre' | 'hierarchical' | 'circular' | 'grid') => void;
+  showTransformNodes?: boolean;
+  onShowTransformNodesChange?: (show: boolean) => void;
 }
 
 const ControlPanel: React.FC<ControlPanelProps> = ({
@@ -46,6 +53,11 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
   onEdgeLengthChange,
   layoutParams = { nodeSpacing: 100, levelSpacing: 150, iterations: 150, damping: 0.7 },
   onLayoutParamsChange,
+  activeTab = 'graph',
+  columnLayout = 'dagre',
+  onColumnLayoutChange,
+  showTransformNodes = true,
+  onShowTransformNodesChange,
 }) => {
   const [isCollapsed, setIsCollapsed] = React.useState(false);
   const [isTransformTypesExpanded, setIsTransformTypesExpanded] = React.useState(false);
@@ -93,6 +105,9 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
       {/* Collapsible content */}
       {!isCollapsed ? (
         <div className="p-4 space-y-4">
+          {/* Theme Selector */}
+          <ThemeSelector />
+
           {/* Statistics */}
           <div className="mb-4 p-3 bg-gray-50 rounded-lg">
             <h3 className="text-sm font-semibold text-gray-700 mb-2">Statistics</h3>
@@ -125,19 +140,25 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
             <AutocompleteSearch
               onSearch={handleSearch}
               graph={graph}
-              placeholder="Search datasets, jobs, or columns..."
+              placeholder={
+                activeTab === 'columns' 
+                  ? "Search columns and transforms..." 
+                  : "Search datasets, jobs, or columns..."
+              }
             />
           </div>
 
-          {/* Layout Parameters */}
-          <div className="space-y-3">
-            <div>
-              <label className="text-sm font-medium text-secondary-700 mb-2 block">
-                Layout Parameters
-              </label>
-              <div className="text-xs text-gray-500 mb-3 p-2 bg-gray-50 rounded">
-                💡 Adjust parameters below, then click "Re-apply" to update the layout
-              </div>
+          {/* Context-sensitive controls based on active tab */}
+          {activeTab === 'graph' && (
+            <div className="space-y-3">
+              <div>
+                <label className="text-sm font-medium text-secondary-700 mb-2 block">
+                  <Workflow className="w-4 h-4 inline mr-1" />
+                  Main Graph Layout
+                </label>
+                <div className="text-xs text-gray-500 mb-3 p-2 bg-gray-50 rounded">
+                  💡 Adjust parameters below, then click "Re-apply" to update the layout
+                </div>
               <div className="space-y-3">
                 {/* Node Spacing */}
                 <div>
@@ -216,64 +237,124 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
                   </>
                 )}
               </div>
-            </div>
+              </div>
 
-            {/* Layout Controls */}
-            <div>
-              <label className="text-sm font-medium text-secondary-700 mb-2 block">
-                Layout Algorithm
-              </label>
-              <div className="grid grid-cols-2 gap-1 mb-3">
-                {(['hierarchical', 'circular', 'grid', 'force', 'flow', 'dag', 'sugiyama', 'manual'] as LayoutAlgorithm[]).map((algo) => (
+              {/* Layout Controls */}
+              <div>
+                <label className="text-sm font-medium text-secondary-700 mb-2 block">
+                  Layout Algorithm
+                </label>
+                <div className="grid grid-cols-2 gap-1 mb-3">
+                  {(['hierarchical', 'circular', 'grid', 'force', 'flow', 'dag', 'sugiyama', 'manual'] as LayoutAlgorithm[]).map((algo) => (
+                    <button
+                      key={algo}
+                      onClick={() => {
+                        console.log('🔧 ControlPanel: Layout button clicked:', algo);
+                        onLayoutChange?.(algo);
+                      }}
+                      className={`px-2 py-1 text-xs rounded transition-colors cursor-pointer ${
+                        layoutAlgorithm === algo
+                          ? 'bg-blue-500 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      {algo.charAt(0).toUpperCase() + algo.slice(1)}
+                    </button>
+                  ))}
+                </div>
+                
+                <div className="flex gap-1">
                   <button
-                    key={algo}
                     onClick={() => {
-                      console.log('🔧 ControlPanel: Layout button clicked:', algo);
-                      onLayoutChange?.(algo);
+                      console.log('🔧 ControlPanel: Re-apply button clicked');
+                      onApplyLayout?.();
                     }}
-                    className={`px-2 py-1 text-xs rounded transition-colors cursor-pointer ${
-                      layoutAlgorithm === algo
-                        ? 'bg-blue-500 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
+                    className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors cursor-pointer"
+                    title="Re-apply current layout"
                   >
-                    {algo.charAt(0).toUpperCase() + algo.slice(1)}
+                    Re-apply
                   </button>
-                ))}
-              </div>
-              
-              
-              <div className="flex gap-1">
-                <button
-                  onClick={() => {
-                    console.log('🔧 ControlPanel: Re-apply button clicked');
-                    onApplyLayout?.();
-                  }}
-                  className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors cursor-pointer"
-                  title="Re-apply current layout"
-                >
-                  Re-apply
-                </button>
-                <button
-                  onClick={() => {
-                    console.log('🔧 ControlPanel: Fit View button clicked');
-                    onFitView?.();
-                  }}
-                  className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors cursor-pointer"
-                >
-                  Fit View
-                </button>
-                <button
-                  onClick={() => {
-                    console.log('🔧 ControlPanel: Randomize button clicked');
-                    onRandomize?.();
-                  }}
-                  className="px-2 py-1 text-xs bg-purple-100 text-purple-700 rounded hover:bg-purple-200 transition-colors cursor-pointer"
-                >
-                  Randomize
-                </button>
+                  <button
+                    onClick={() => {
+                      console.log('🔧 ControlPanel: Fit View button clicked');
+                      onFitView?.();
+                    }}
+                    className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors cursor-pointer"
+                  >
+                    Fit View
+                  </button>
+                  <button
+                    onClick={() => {
+                      console.log('🔧 ControlPanel: Randomize button clicked');
+                      onRandomize?.();
+                    }}
+                    className="px-2 py-1 text-xs bg-purple-100 text-purple-700 rounded hover:bg-purple-200 transition-colors cursor-pointer"
+                  >
+                    Randomize
+                  </button>
+                </div>
               </div>
             </div>
+          )}
+
+          {/* Column Lineage Controls */}
+          {activeTab === 'columns' && (
+            <div className="space-y-3">
+              <div>
+                <label className="text-sm font-medium text-secondary-700 mb-2 block">
+                  <GitBranch className="w-4 h-4 inline mr-1" />
+                  Column Lineage Layout
+                </label>
+                <div className="text-xs text-gray-500 mb-3 p-2 bg-gray-50 rounded">
+                  💡 Choose layout algorithm for column lineage visualization
+                </div>
+                
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-sm font-medium text-secondary-700 mb-2 block">
+                      Layout Algorithm
+                    </label>
+                    <div className="grid grid-cols-2 gap-1 mb-3">
+                      {(['dagre', 'hierarchical', 'circular', 'grid'] as const).map((layout) => (
+                        <button
+                          key={layout}
+                          onClick={() => {
+                            console.log('🔧 ControlPanel: Column layout button clicked:', layout);
+                            onColumnLayoutChange?.(layout);
+                          }}
+                          className={`px-2 py-1 text-xs rounded transition-colors cursor-pointer ${
+                            columnLayout === layout
+                              ? 'bg-blue-500 text-white'
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                        >
+                          {layout.charAt(0).toUpperCase() + layout.slice(1)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={showTransformNodes}
+                        onChange={(e) => {
+                          console.log('🔧 ControlPanel: Show transform nodes changed:', e.target.checked);
+                          onShowTransformNodesChange?.(e.target.checked);
+                        }}
+                        className="rounded border-secondary-300 text-primary-600 focus:ring-primary-500"
+                      />
+                      <span className="ml-2 text-sm text-secondary-600">Show Transform Nodes</span>
+                    </label>
+                    <div className="text-xs text-gray-500 mt-1">
+                      Toggle intermediate transform nodes in the graph
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
 
             {/* Transform Types - Collapsible Sub-panel */}
@@ -320,6 +401,7 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
           <div className="w-8 h-8 rounded-full bg-secondary-100 flex items-center justify-center group hover:bg-secondary-200 transition-colors">
             <Settings className="w-4 h-4 text-secondary-600 group-hover:text-secondary-800" />
           </div>
+          <ThemeSelector isCollapsed={true} />
         </div>
       )}
     </div>

@@ -11,6 +11,8 @@ interface ColumnLineageGraphProps {
   selectedColumn?: string;
   onColumnSelect?: (column: string) => void;
   onTransformSelect?: (transform: ColumnTransform) => void;
+  layout?: 'dagre' | 'hierarchical' | 'circular' | 'grid';
+  showTransformNodes?: boolean;
 }
 
 interface ColumnNode {
@@ -27,12 +29,12 @@ const ColumnLineageGraph: React.FC<ColumnLineageGraphProps> = ({
   graph,
   selectedColumn,
   onColumnSelect,
-  onTransformSelect
+  onTransformSelect,
+  layout = 'dagre',
+  showTransformNodes = true
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const cyRef = useRef<cytoscape.Core | null>(null);
-  const [layout, setLayout] = useState<'dagre' | 'hierarchical' | 'circular' | 'grid'>('dagre');
-  const [showTransformNodes, setShowTransformNodes] = useState(true);
   
   // Tooltip state - same as main lineage graph
   const tooltipRef = useRef<HTMLElement | null>(null);
@@ -558,21 +560,6 @@ const ColumnLineageGraph: React.FC<ColumnLineageGraphProps> = ({
     }
   }, [layout]);
 
-  const handleLayoutChange = (newLayout: typeof layout) => {
-    setLayout(newLayout);
-  };
-
-  const handleFitView = () => {
-    if (cyRef.current) {
-      cyRef.current.fit();
-    }
-  };
-
-  const handleRandomize = () => {
-    if (cyRef.current) {
-      cyRef.current.layout({ name: 'random' }).run();
-    }
-  };
 
   const { nodes } = buildColumnGraph();
   const columnCount = nodes.filter(n => n.type === 'column').length;
@@ -580,59 +567,6 @@ const ColumnLineageGraph: React.FC<ColumnLineageGraphProps> = ({
 
   return (
     <div className="h-full flex flex-col">
-      {/* Controls */}
-      <div className="bg-white border-b border-gray-200 p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <h3 className="text-lg font-semibold text-gray-900">Column Lineage Graph</h3>
-            <div className="flex items-center space-x-2 text-sm text-gray-600">
-              <span>{columnCount} columns</span>
-              <span>•</span>
-              <span>{transformCount} transforms</span>
-            </div>
-          </div>
-          
-          <div className="flex items-center space-x-3">
-            {/* Layout Selector */}
-            <select
-              value={layout}
-              onChange={(e) => handleLayoutChange(e.target.value as typeof layout)}
-              className="px-3 py-1 border border-gray-300 rounded-md text-sm"
-            >
-              <option value="dagre">DAG</option>
-              <option value="hierarchical">Hierarchical</option>
-              <option value="circular">Circular</option>
-              <option value="grid">Grid</option>
-            </select>
-
-            {/* Transform Nodes Toggle */}
-            <label className="flex items-center space-x-2 text-sm">
-              <input
-                type="checkbox"
-                checked={showTransformNodes}
-                onChange={(e) => setShowTransformNodes(e.target.checked)}
-                className="rounded"
-              />
-              <span>Show Transform Nodes</span>
-            </label>
-
-            {/* Actions */}
-            <button
-              onClick={handleFitView}
-              className="px-3 py-1 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700"
-            >
-              Fit View
-            </button>
-            <button
-              onClick={handleRandomize}
-              className="px-3 py-1 bg-gray-600 text-white rounded-md text-sm hover:bg-gray-700"
-            >
-              Randomize
-            </button>
-          </div>
-        </div>
-      </div>
-
       {/* Graph Container */}
       <div className="flex-1 relative">
         {nodes.length === 0 ? (
