@@ -5,7 +5,7 @@ import CytoscapeLineageGraph from './components/CytoscapeLineageGraph';
 import ControlPanel from './components/ControlPanel';
 import ColumnTracer from './components/ColumnTracer';
 import DataBrowser from './components/DataBrowser';
-import ColumnLineageViewer from './components/ColumnLineageViewer';
+import ColumnLineageGraph from './components/ColumnLineageGraph';
 import { marquezApi } from './services/marquezApi';
 import { ViewMode, ColumnTransform } from './types/lineage';
 
@@ -340,24 +340,26 @@ const AppContent: React.FC = () => {
               />
             )}
             {activeTab === 'columns' && highlightedGraph && (
-              <div className="h-full overflow-y-auto p-6">
-                <ColumnLineageViewer
-                  graph={highlightedGraph}
-                  selectedColumn={selectedColumn?.id}
-                  onColumnSelect={(columnKey) => {
-                    console.log('Column selected:', columnKey);
-                    // Find the column transform by the column key
-                    const [namespace, dataset, field] = columnKey.split('.');
-                    const transform = highlightedGraph.transforms?.find(t => 
-                      t.inputFields.some(f => f.namespace === namespace && f.name === dataset && f.field === field) ||
-                      t.outputField === field
-                    );
-                    if (transform) {
-                      setSelectedColumn(transform);
-                    }
-                  }}
-                />
-              </div>
+              <ColumnLineageGraph
+                graph={highlightedGraph}
+                selectedColumn={selectedColumn?.id}
+                onColumnSelect={(columnKey) => {
+                  console.log('Column selected:', columnKey);
+                  // Find the column transform by the column key
+                  const [namespace, dataset, field] = columnKey.split('.');
+                  const transform = highlightedGraph.transforms?.find(t => 
+                    t.inputFields.some(f => f.namespace === namespace && f.name === dataset && f.field === field) ||
+                    t.outputField === field
+                  );
+                  if (transform) {
+                    setSelectedColumn(transform);
+                  }
+                }}
+                onTransformSelect={(transform) => {
+                  console.log('Transform selected:', transform);
+                  setSelectedColumn(transform);
+                }}
+              />
             )}
             {searchQuery && highlightedGraph && (!highlightedGraph.nodes || highlightedGraph.nodes.length === 0) && (
               <div className="flex items-center justify-center h-full">
