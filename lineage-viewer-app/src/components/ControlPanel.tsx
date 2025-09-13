@@ -356,43 +356,41 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
             </div>
           )}
 
-
-            {/* Transform Types - Collapsible Sub-panel */}
-            <div className="pt-4 border-t border-secondary-200">
-              <button
-                onClick={() => setIsTransformTypesExpanded(!isTransformTypesExpanded)}
-                className="flex items-center justify-between w-full text-sm font-medium text-secondary-700 hover:text-secondary-900 transition-colors"
-              >
-                <span>Transform Types</span>
-                {isTransformTypesExpanded ? (
-                  <ChevronUp className="w-4 h-4" />
-                ) : (
-                  <ChevronDown className="w-4 h-4" />
-                )}
-              </button>
-              
-              {isTransformTypesExpanded && (
-                <div className="mt-3 space-y-2">
-                  {[
-                    'SPARK_OPERATION',
-                    'PANDAS_OPERATION',
-                    'SQL_OPERATION',
-                    'AGGREGATION',
-                    'STRING_FUNCTION',
-                    'TYPE_CONVERSION',
-                  ].map((type) => (
-                    <label key={type} className="flex items-center">
-                      <input
-                        type="checkbox"
-                        className="rounded border-secondary-300 text-primary-600 focus:ring-primary-500"
-                        defaultChecked
-                      />
-                      <span className="ml-2 text-sm text-secondary-600">{type}</span>
-                    </label>
-                  ))}
-                </div>
+          {/* Transform Types - Collapsible Sub-panel */}
+          <div className="pt-4 border-t border-secondary-200">
+            <button
+              onClick={() => setIsTransformTypesExpanded(!isTransformTypesExpanded)}
+              className="flex items-center justify-between w-full text-sm font-medium text-secondary-700 hover:text-secondary-900 transition-colors"
+            >
+              <span>Transform Types</span>
+              {isTransformTypesExpanded ? (
+                <ChevronUp className="w-4 h-4" />
+              ) : (
+                <ChevronDown className="w-4 h-4" />
               )}
-            </div>
+            </button>
+            
+            {isTransformTypesExpanded && (
+              <div className="mt-3 space-y-2">
+                {[
+                  'SPARK_OPERATION',
+                  'PANDAS_OPERATION',
+                  'SQL_OPERATION',
+                  'AGGREGATION',
+                  'STRING_FUNCTION',
+                  'TYPE_CONVERSION',
+                ].map((type) => (
+                  <label key={type} className="flex items-center">
+                    <input
+                      type="checkbox"
+                      className="rounded border-secondary-300 text-primary-600 focus:ring-primary-500"
+                      defaultChecked
+                    />
+                    <span className="ml-2 text-sm text-secondary-600">{type}</span>
+                  </label>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       ) : (

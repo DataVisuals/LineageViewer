@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Palette, ChevronDown, Check } from 'lucide-react';
-import { useTheme, Theme } from '../contexts/ThemeContext';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface ThemeSelectorProps {
   isCollapsed?: boolean;
