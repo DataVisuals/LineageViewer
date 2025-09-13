@@ -33,6 +33,12 @@ const ColumnLineageGraph: React.FC<ColumnLineageGraphProps> = ({
   const cyRef = useRef<cytoscape.Core | null>(null);
   const [layout, setLayout] = useState<'dagre' | 'hierarchical' | 'circular' | 'grid'>('dagre');
   const [showTransformNodes, setShowTransformNodes] = useState(true);
+  
+  // Tooltip state - same as main lineage graph
+  const tooltipRef = useRef<HTMLElement | null>(null);
+  const tooltipTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const containerElementRef = useRef<HTMLElement | null>(null);
+  const mouseLeaveHandlerRef = useRef<(() => void) | null>(null);
 
   // Build column lineage graph data
   const buildColumnGraph = useCallback(() => {
@@ -164,40 +170,56 @@ const ColumnLineageGraph: React.FC<ColumnLineageGraphProps> = ({
           selector: 'node',
           style: {
             'background-color': (ele: any) => {
+              if (ele.data('highlighted')) return '#fef3c7';
               const type = ele.data('type');
-              if (type === 'column') {
-                return '#3b82f6'; // Blue for columns
-              } else {
-                return '#f59e0b'; // Amber for transforms
+              switch (type) {
+                case 'column':
+                  return '#eff6ff'; // Light blue background
+                case 'transform':
+                  return '#fffbeb'; // Light amber background
+                default:
+                  return '#f9fafb'; // Light gray background
               }
             },
+            'border-color': (ele: any) => {
+              if (ele.data('highlighted')) return '#f59e0b';
+              const type = ele.data('type');
+              switch (type) {
+                case 'column':
+                  return '#3b82f6'; // Blue border
+                case 'transform':
+                  return '#f59e0b'; // Amber border
+                default:
+                  return '#6b7280'; // Gray border
+              }
+            },
+            'border-width': 2,
             'label': 'data(label)',
             'text-valign': 'center',
             'text-halign': 'center',
-            'color': 'white',
+            'color': '#1f2937', // Dark gray/black text
             'font-size': '12px',
             'font-weight': 'bold',
             'width': (ele: any) => {
               const type = ele.data('type');
-              return type === 'column' ? '60px' : '80px';
+              return type === 'column' ? '120px' : '140px';
             },
             'height': (ele: any) => {
               const type = ele.data('type');
-              return type === 'column' ? '40px' : '50px';
+              return type === 'column' ? '50px' : '60px';
             },
             'shape': (ele: any) => {
               const type = ele.data('type');
-              return type === 'column' ? 'ellipse' : 'rectangle';
+              return type === 'column' ? 'ellipse' : 'round-rectangle';
             },
-            'border-width': 2,
-            'border-color': (ele: any) => {
-              const isSelected = ele.data('fullId') === selectedColumn;
-              return isSelected ? '#ef4444' : '#374151';
+            'text-wrap': 'wrap',
+            'text-max-width': (ele: any) => {
+              const type = ele.data('type');
+              return type === 'column' ? '100px' : '120px';
             },
-            'border-opacity': (ele: any) => {
-              const isSelected = ele.data('fullId') === selectedColumn;
-              return isSelected ? 1 : 0.3;
-            }
+            'padding': '6px',
+            'text-outline-width': 0,
+            'text-outline-color': 'transparent',
           }
         },
         {
@@ -210,7 +232,7 @@ const ColumnLineageGraph: React.FC<ColumnLineageGraphProps> = ({
                 case 'AGGREGATION': return 4;
                 case 'CALCULATION': return 3;
                 case 'CONDITIONAL': return 3;
-                default: return 2;
+                default: return 3;
               }
             },
             'line-color': (ele: any) => {
@@ -240,25 +262,7 @@ const ColumnLineageGraph: React.FC<ColumnLineageGraphProps> = ({
             'target-arrow-shape': 'triangle',
             'curve-style': 'bezier',
             'opacity': 0.8,
-            'line-style': (ele: any) => {
-              const transformType = ele.data('transformType');
-              return transformType === 'DIRECT_COPY' ? 'solid' : 'solid';
-            }
-          }
-        },
-        {
-          selector: 'node:selected',
-          style: {
-            'border-width': 4,
-            'border-color': '#ef4444',
-            'background-color': (ele: any) => {
-              const type = ele.data('type');
-              if (type === 'column') {
-                return '#1d4ed8'; // Darker blue
-              } else {
-                return '#d97706'; // Darker amber
-              }
-            }
+            'line-cap': 'round',
           }
         },
         {
@@ -266,8 +270,28 @@ const ColumnLineageGraph: React.FC<ColumnLineageGraphProps> = ({
           style: {
             'line-color': '#ef4444',
             'target-arrow-color': '#ef4444',
-            'opacity': 1
-          }
+            'opacity': 1,
+          },
+        },
+        {
+          selector: 'node:selected',
+          style: {
+            'border-width': 3,
+            'border-color': '#6366f1',
+            'background-color': (ele: any) => {
+              const type = ele.data('type');
+              switch (type) {
+                case 'column':
+                  return '#dbeafe'; // Darker blue on selection
+                case 'transform':
+                  return '#fef3c7'; // Darker amber on selection
+                default:
+                  return '#f3f4f6'; // Darker gray on selection
+              }
+            },
+            'font-size': '13px',
+            'font-weight': 'bold',
+          },
         }
       ],
       layout: {
@@ -302,95 +326,216 @@ const ColumnLineageGraph: React.FC<ColumnLineageGraphProps> = ({
       }
     });
 
-    // Add hover effects and tooltips
-    cyRef.current.on('mouseover', 'node', (event) => {
-      const node = event.target;
-      const nodeData = node.data();
-      node.style('opacity', 0.8);
+    // Add tooltip functionality - same as main lineage graph
+    cyRef.current?.on('mouseover', 'node', (event) => {
+      console.log('🔍 Column Lineage: Mouse over node event triggered!');
       
-      // Create tooltip
-      const tooltip = document.createElement('div');
-      tooltip.className = 'column-lineage-tooltip';
-      tooltip.style.cssText = `
-        position: absolute;
-        background: rgba(0, 0, 0, 0.9);
-        color: white;
-        padding: 8px 12px;
-        border-radius: 6px;
-        font-size: 12px;
-        z-index: 1000;
-        pointer-events: none;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-        border: 1px solid #374151;
-        max-width: 250px;
-      `;
-      
-      if (nodeData.type === 'column') {
-        tooltip.innerHTML = `
-          <div style="font-weight: bold; color: #60a5fa; margin-bottom: 4px;">Column: ${nodeData.label}</div>
-          <div style="color: #9ca3af; font-size: 11px;">Dataset: ${nodeData.dataset}</div>
-          <div style="color: #9ca3af; font-size: 11px;">Namespace: ${nodeData.namespace}</div>
-        `;
-      } else {
-        const transform = nodeData.transform;
-        const lineage = nodeData.lineage;
-        tooltip.innerHTML = `
-          <div style="font-weight: bold; color: #fbbf24; margin-bottom: 4px;">Transform: ${transform?.name}</div>
-          <div style="color: #9ca3af; font-size: 11px;">Type: ${lineage?.transformType}</div>
-          <div style="color: #9ca3af; font-size: 11px;">Description: ${lineage?.description}</div>
-          ${lineage?.sql ? `<div style="color: #6b7280; font-size: 10px; margin-top: 4px; font-family: monospace; background: #1f2937; padding: 4px; border-radius: 3px;">${lineage.sql.substring(0, 100)}${lineage.sql.length > 100 ? '...' : ''}</div>` : ''}
-        `;
+      // Clear any pending tooltip removal
+      if (tooltipTimeoutRef.current) {
+        clearTimeout(tooltipTimeoutRef.current);
+        tooltipTimeoutRef.current = null;
       }
       
-      document.body.appendChild(tooltip);
-      
-      // Position tooltip
-      const updateTooltipPosition = () => {
-        const pos = node.renderedPosition();
-        const containerRect = containerRef.current!.getBoundingClientRect();
-        const tooltipRect = tooltip.getBoundingClientRect();
-        
-        let left = containerRect.left + pos.x + 20;
-        let top = containerRect.top + pos.y - tooltipRect.height / 2;
-        
-        // Keep tooltip within viewport
-        if (left + tooltipRect.width > window.innerWidth) {
-          left = containerRect.left + pos.x - tooltipRect.width - 20;
-        }
-        if (top < 0) {
-          top = containerRect.top + pos.y + 20;
-        }
-        if (top + tooltipRect.height > window.innerHeight) {
-          top = window.innerHeight - tooltipRect.height - 20;
-        }
-        
-        tooltip.style.left = `${left}px`;
-        tooltip.style.top = `${top}px`;
-      };
-      
-      updateTooltipPosition();
-      cyRef.current!.on('zoom pan', updateTooltipPosition);
-      
-      // Store tooltip reference for cleanup
-      (node as any).tooltip = tooltip;
-    });
-
-    cyRef.current.on('mouseout', 'node', (event) => {
-      const node = event.target;
-      node.style('opacity', 1);
-      
-      // Remove tooltip
-      const tooltip = (node as any).tooltip;
-      if (tooltip) {
-        tooltip.remove();
-        (node as any).tooltip = null;
+      // Remove existing tooltip if any
+      if (tooltipRef.current) {
+        tooltipRef.current.remove();
+        tooltipRef.current = null;
         cyRef.current!.off('zoom pan');
       }
+      
+      // Add a small delay before showing tooltip to prevent flickering
+      tooltipTimeoutRef.current = setTimeout(() => {
+        const node = event.target;
+        const data = node.data();
+        console.log('🔍 Column Lineage: Node data extracted:', data);
+      
+        // Create tooltip element
+        tooltipRef.current = document.createElement('div');
+        tooltipRef.current.className = 'cytoscape-tooltip';
+        tooltipRef.current.style.cssText = `
+          position: absolute;
+          background: rgba(0, 0, 0, 0.9);
+          color: white;
+          padding: 12px;
+          border-radius: 8px;
+          font-size: 12px;
+          max-width: 300px;
+          z-index: 1000;
+          pointer-events: none;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+          border: 1px solid #374151;
+        `;
+
+        // Build tooltip content
+        let content = `<div style="font-weight: bold; margin-bottom: 12px; color: #fbbf24; font-size: 16px;">${data.label}</div>`;
+      
+        // Basic Information Section
+        content += `<div style="margin-bottom: 12px; padding: 8px; background: #1f2937; border-radius: 6px;">`;
+        content += `<div style="color: #e5e7eb; font-size: 12px; font-weight: bold; margin-bottom: 6px;">Basic Information</div>`;
+        
+        content += `<div style="margin-bottom: 4px; color: #9ca3af; font-size: 11px;"><strong>Type:</strong> ${data.type || 'Unknown'}</div>`;
+        
+        if (data.fullId) {
+          content += `<div style="margin-bottom: 4px; color: #9ca3af; font-size: 11px;"><strong>Full ID:</strong> ${data.fullId}</div>`;
+        }
+        
+        if (data.dataset) {
+          content += `<div style="margin-bottom: 4px; color: #9ca3af; font-size: 11px;"><strong>Dataset:</strong> ${data.dataset}</div>`;
+        }
+        
+        if (data.namespace) {
+          content += `<div style="margin-bottom: 4px; color: #9ca3af; font-size: 11px;"><strong>Namespace:</strong> ${data.namespace}</div>`;
+        }
+        
+        content += `</div>`;
+        
+        // Column Information Section (for columns)
+        if (data.type === 'column') {
+          content += `<div style="margin-bottom: 12px; padding: 8px; background: #1f2937; border-radius: 6px;">`;
+          content += `<div style="color: #e5e7eb; font-size: 12px; font-weight: bold; margin-bottom: 6px;">Column Information</div>`;
+          content += `<div style="margin-bottom: 4px; color: #9ca3af; font-size: 11px;"><strong>Field Name:</strong> ${data.label}</div>`;
+          content += `<div style="margin-bottom: 4px; color: #9ca3af; font-size: 11px;"><strong>Dataset:</strong> ${data.dataset}</div>`;
+          content += `<div style="margin-bottom: 4px; color: #9ca3af; font-size: 11px;"><strong>Namespace:</strong> ${data.namespace}</div>`;
+          content += `</div>`;
+        }
+        
+        // Transform Information Section (for transforms)
+        if (data.type === 'transform') {
+          const transform = data.transform;
+          const lineage = data.lineage;
+          
+          content += `<div style="margin-bottom: 12px; padding: 8px; background: #1f2937; border-radius: 6px;">`;
+          content += `<div style="color: #e5e7eb; font-size: 12px; font-weight: bold; margin-bottom: 6px;">Transform Information</div>`;
+          
+          if (transform?.name) {
+            content += `<div style="margin-bottom: 4px; color: #9ca3af; font-size: 11px;"><strong>Transform Name:</strong> ${transform.name}</div>`;
+          }
+          
+          if (lineage?.transformType) {
+            content += `<div style="margin-bottom: 4px; color: #9ca3af; font-size: 11px;"><strong>Transform Type:</strong> ${lineage.transformType}</div>`;
+          }
+          
+          if (lineage?.description) {
+            content += `<div style="margin-bottom: 4px; color: #9ca3af; font-size: 11px;"><strong>Description:</strong> ${lineage.description}</div>`;
+          }
+          
+          if (transform?.language) {
+            content += `<div style="margin-bottom: 4px; color: #9ca3af; font-size: 11px;"><strong>Language:</strong> ${transform.language}</div>`;
+          }
+          
+          if (transform?.sourceFile) {
+            content += `<div style="margin-bottom: 4px; color: #9ca3af; font-size: 11px;"><strong>Source File:</strong> ${transform.sourceFile}</div>`;
+          }
+          
+          // Show SQL if available
+          if (lineage?.sql) {
+            content += `<div style="margin-top: 8px; color: #9ca3af; font-size: 11px;"><strong>SQL:</strong></div>`;
+            const sqlPreview = lineage.sql.length > 200 ? lineage.sql.substring(0, 200) + '...' : lineage.sql;
+            content += `<div style="margin-top: 4px; color: #e5e7eb; font-size: 9px; font-family: monospace; background: #374151; padding: 6px; border-radius: 4px; white-space: pre-wrap; border-left: 3px solid #10b981;">${sqlPreview}</div>`;
+          }
+          
+          content += `</div>`;
+        }
+
+        tooltipRef.current.innerHTML = content;
+        document.body.appendChild(tooltipRef.current);
+
+        // Position tooltip
+        const updateTooltipPosition = () => {
+          if (tooltipRef.current) {
+            const pos = node.renderedPosition();
+            const containerRect = containerRef.current!.getBoundingClientRect();
+            const tooltipRect = tooltipRef.current.getBoundingClientRect();
+            
+            let left = containerRect.left + pos.x + 20;
+            let top = containerRect.top + pos.y - tooltipRect.height / 2;
+            
+            // Keep tooltip within viewport
+            if (left + tooltipRect.width > window.innerWidth) {
+              left = containerRect.left + pos.x - tooltipRect.width - 20;
+            }
+            if (top < 0) {
+              top = containerRect.top + pos.y + 20;
+            }
+            if (top + tooltipRect.height > window.innerHeight) {
+              top = window.innerHeight - tooltipRect.height - 20;
+            }
+            
+            tooltipRef.current.style.left = `${left}px`;
+            tooltipRef.current.style.top = `${top}px`;
+          }
+        };
+
+        updateTooltipPosition();
+        
+        // Update position on zoom/pan
+        if (cyRef.current) {
+          cyRef.current.on('zoom pan', updateTooltipPosition);
+        }
+      }, 200); // 200ms delay before showing tooltip
     });
+
+    // Use a timeout to handle tooltip removal more reliably
+    const removeTooltip = () => {
+      if (tooltipRef.current) {
+        console.log('🔍 Column Lineage: Removing tooltip');
+        tooltipRef.current.remove();
+        tooltipRef.current = null;
+        if (cyRef.current) {
+          cyRef.current.off('zoom pan');
+        }
+      }
+    };
+
+    cyRef.current?.on('mouseout', 'node', () => {
+      if (tooltipTimeoutRef.current) {
+        clearTimeout(tooltipTimeoutRef.current);
+        tooltipTimeoutRef.current = null;
+      }
+      tooltipTimeoutRef.current = setTimeout(() => {
+        removeTooltip();
+      }, 150);
+    });
+
+    // Add mouse leave handler to container
+    containerElementRef.current = containerRef.current;
+    if (containerElementRef.current) {
+      mouseLeaveHandlerRef.current = () => {
+        if (tooltipTimeoutRef.current) {
+          clearTimeout(tooltipTimeoutRef.current);
+          tooltipTimeoutRef.current = null;
+        }
+        removeTooltip();
+      };
+      containerElementRef.current.addEventListener('mouseleave', mouseLeaveHandlerRef.current);
+    }
 
     // Fit to view
     cyRef.current.fit();
 
+    // Cleanup function
+    return () => {
+      // Clean up tooltip
+      if (tooltipRef.current) {
+        tooltipRef.current.remove();
+        tooltipRef.current = null;
+      }
+      if (tooltipTimeoutRef.current) {
+        clearTimeout(tooltipTimeoutRef.current);
+        tooltipTimeoutRef.current = null;
+      }
+      
+      // Remove container event listener
+      if (containerElementRef.current && mouseLeaveHandlerRef.current) {
+        containerElementRef.current.removeEventListener('mouseleave', mouseLeaveHandlerRef.current);
+      }
+      
+      // Destroy Cytoscape instance
+      if (cyRef.current) {
+        cyRef.current.destroy();
+        cyRef.current = null;
+      }
+    };
   }, [buildColumnGraph, selectedColumn, layout, onColumnSelect, onTransformSelect]);
 
   // Update layout when it changes
