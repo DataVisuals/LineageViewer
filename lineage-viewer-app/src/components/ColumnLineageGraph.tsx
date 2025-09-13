@@ -31,7 +31,7 @@ const ColumnLineageGraph: React.FC<ColumnLineageGraphProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const cyRef = useRef<cytoscape.Core | null>(null);
-  const [layout, setLayout] = useState<'dag' | 'hierarchical' | 'circular' | 'grid'>('dag');
+  const [layout, setLayout] = useState<'dagre' | 'hierarchical' | 'circular' | 'grid'>('dagre');
   const [showTransformNodes, setShowTransformNodes] = useState(true);
 
   // Build column lineage graph data
@@ -272,7 +272,7 @@ const ColumnLineageGraph: React.FC<ColumnLineageGraphProps> = ({
       ],
       layout: {
         name: layout,
-        ...(layout === 'dag' ? {
+        ...(layout === 'dagre' ? {
           rankDir: 'TB',
           nodeSep: 50,
           rankSep: 100
@@ -398,7 +398,7 @@ const ColumnLineageGraph: React.FC<ColumnLineageGraphProps> = ({
     if (cyRef.current) {
       cyRef.current.layout({
         name: layout,
-        ...(layout === 'dag' ? {
+        ...(layout === 'dagre' ? {
           rankDir: 'TB',
           nodeSep: 50,
           rankSep: 100
@@ -454,7 +454,7 @@ const ColumnLineageGraph: React.FC<ColumnLineageGraphProps> = ({
               onChange={(e) => handleLayoutChange(e.target.value as typeof layout)}
               className="px-3 py-1 border border-gray-300 rounded-md text-sm"
             >
-              <option value="dag">DAG</option>
+              <option value="dagre">DAG</option>
               <option value="hierarchical">Hierarchical</option>
               <option value="circular">Circular</option>
               <option value="grid">Grid</option>
