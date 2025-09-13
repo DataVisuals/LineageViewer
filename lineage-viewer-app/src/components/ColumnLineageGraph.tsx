@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import cytoscape from 'cytoscape';
 import dagre from 'cytoscape-dagre';
 import { LineageGraph, ColumnTransform, ColumnLineage } from '../types/lineage';
+import { useTheme } from '../contexts/ThemeContext';
 
 // Register the dagre layout
 cytoscape.use(dagre);
@@ -35,6 +36,7 @@ const ColumnLineageGraph: React.FC<ColumnLineageGraphProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const cyRef = useRef<cytoscape.Core | null>(null);
+  const { currentTheme } = useTheme();
   
   // Tooltip state - same as main lineage graph
   const tooltipRef = useRef<HTMLElement | null>(null);
@@ -172,34 +174,34 @@ const ColumnLineageGraph: React.FC<ColumnLineageGraphProps> = ({
           selector: 'node',
           style: {
             'background-color': (ele: any) => {
-              if (ele.data('highlighted')) return '#fef3c7';
+              if (ele.data('highlighted')) return currentTheme.cytoscape.node.column.selected.background;
               const type = ele.data('type');
               switch (type) {
                 case 'column':
-                  return '#eff6ff'; // Light blue background
+                  return currentTheme.cytoscape.node.column.background;
                 case 'transform':
-                  return '#fffbeb'; // Light amber background
+                  return currentTheme.cytoscape.node.transform.background;
                 default:
-                  return '#f9fafb'; // Light gray background
+                  return currentTheme.colors.surface;
               }
             },
             'border-color': (ele: any) => {
-              if (ele.data('highlighted')) return '#f59e0b';
+              if (ele.data('highlighted')) return currentTheme.colors.accent;
               const type = ele.data('type');
               switch (type) {
                 case 'column':
-                  return '#3b82f6'; // Blue border
+                  return currentTheme.cytoscape.node.column.border;
                 case 'transform':
-                  return '#f59e0b'; // Amber border
+                  return currentTheme.cytoscape.node.transform.border;
                 default:
-                  return '#6b7280'; // Gray border
+                  return currentTheme.colors.border;
               }
             },
             'border-width': 2,
             'label': 'data(label)',
             'text-valign': 'center',
             'text-halign': 'center',
-            'color': '#1f2937', // Dark gray/black text
+            'color': currentTheme.colors.text,
             'font-size': '12px',
             'font-weight': 'bold',
             'width': (ele: any) => {
@@ -240,25 +242,25 @@ const ColumnLineageGraph: React.FC<ColumnLineageGraphProps> = ({
             'line-color': (ele: any) => {
               const transformType = ele.data('transformType');
               switch (transformType) {
-                case 'DIRECT_COPY': return '#3b82f6'; // Blue
-                case 'AGGREGATION': return '#8b5cf6'; // Purple
-                case 'CALCULATION': return '#10b981'; // Green
-                case 'CONDITIONAL': return '#f59e0b'; // Amber
-                case 'JOIN': return '#ef4444'; // Red
-                case 'FILTER': return '#6b7280'; // Gray
-                default: return '#6b7280';
+                case 'DIRECT_COPY': return currentTheme.cytoscape.edge.directCopy;
+                case 'AGGREGATION': return currentTheme.cytoscape.edge.aggregation;
+                case 'CALCULATION': return currentTheme.cytoscape.edge.calculation;
+                case 'CONDITIONAL': return currentTheme.cytoscape.edge.conditional;
+                case 'JOIN': return currentTheme.cytoscape.edge.join;
+                case 'FILTER': return currentTheme.cytoscape.edge.filter;
+                default: return currentTheme.cytoscape.edge.default;
               }
             },
             'target-arrow-color': (ele: any) => {
               const transformType = ele.data('transformType');
               switch (transformType) {
-                case 'DIRECT_COPY': return '#3b82f6';
-                case 'AGGREGATION': return '#8b5cf6';
-                case 'CALCULATION': return '#10b981';
-                case 'CONDITIONAL': return '#f59e0b';
-                case 'JOIN': return '#ef4444';
-                case 'FILTER': return '#6b7280';
-                default: return '#6b7280';
+                case 'DIRECT_COPY': return currentTheme.cytoscape.edge.directCopy;
+                case 'AGGREGATION': return currentTheme.cytoscape.edge.aggregation;
+                case 'CALCULATION': return currentTheme.cytoscape.edge.calculation;
+                case 'CONDITIONAL': return currentTheme.cytoscape.edge.conditional;
+                case 'JOIN': return currentTheme.cytoscape.edge.join;
+                case 'FILTER': return currentTheme.cytoscape.edge.filter;
+                default: return currentTheme.cytoscape.edge.default;
               }
             },
             'target-arrow-shape': 'triangle',
@@ -270,8 +272,8 @@ const ColumnLineageGraph: React.FC<ColumnLineageGraphProps> = ({
         {
           selector: 'edge:selected',
           style: {
-            'line-color': '#ef4444',
-            'target-arrow-color': '#ef4444',
+            'line-color': currentTheme.colors.error,
+            'target-arrow-color': currentTheme.colors.error,
             'opacity': 1,
           },
         },
@@ -279,16 +281,16 @@ const ColumnLineageGraph: React.FC<ColumnLineageGraphProps> = ({
           selector: 'node:selected',
           style: {
             'border-width': 3,
-            'border-color': '#6366f1',
+            'border-color': currentTheme.colors.primary,
             'background-color': (ele: any) => {
               const type = ele.data('type');
               switch (type) {
                 case 'column':
-                  return '#dbeafe'; // Darker blue on selection
+                  return currentTheme.cytoscape.node.column.selected.background;
                 case 'transform':
-                  return '#fef3c7'; // Darker amber on selection
+                  return currentTheme.cytoscape.node.transform.selected.background;
                 default:
-                  return '#f3f4f6'; // Darker gray on selection
+                  return currentTheme.colors.surface;
               }
             },
             'font-size': '13px',
@@ -356,8 +358,8 @@ const ColumnLineageGraph: React.FC<ColumnLineageGraphProps> = ({
         tooltipRef.current.className = 'cytoscape-tooltip';
         tooltipRef.current.style.cssText = `
           position: absolute;
-          background: rgba(0, 0, 0, 0.9);
-          color: white;
+          background: ${currentTheme.cytoscape.tooltip.background};
+          color: ${currentTheme.cytoscape.tooltip.text};
           padding: 12px;
           border-radius: 8px;
           font-size: 12px;
@@ -365,39 +367,39 @@ const ColumnLineageGraph: React.FC<ColumnLineageGraphProps> = ({
           z-index: 1000;
           pointer-events: none;
           box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-          border: 1px solid #374151;
+          border: 1px solid ${currentTheme.cytoscape.tooltip.border};
         `;
 
         // Build tooltip content
-        let content = `<div style="font-weight: bold; margin-bottom: 12px; color: #fbbf24; font-size: 16px;">${data.label}</div>`;
+        let content = `<div style="font-weight: bold; margin-bottom: 12px; color: ${currentTheme.cytoscape.tooltip.accent}; font-size: 16px;">${data.label}</div>`;
       
         // Basic Information Section
-        content += `<div style="margin-bottom: 12px; padding: 8px; background: #1f2937; border-radius: 6px;">`;
-        content += `<div style="color: #e5e7eb; font-size: 12px; font-weight: bold; margin-bottom: 6px;">Basic Information</div>`;
+        content += `<div style="margin-bottom: 12px; padding: 8px; background: ${currentTheme.colors.surface}; border-radius: 6px;">`;
+        content += `<div style="color: ${currentTheme.colors.text}; font-size: 12px; font-weight: bold; margin-bottom: 6px;">Basic Information</div>`;
         
-        content += `<div style="margin-bottom: 4px; color: #9ca3af; font-size: 11px;"><strong>Type:</strong> ${data.type || 'Unknown'}</div>`;
+        content += `<div style="margin-bottom: 4px; color: ${currentTheme.colors.textSecondary}; font-size: 11px;"><strong>Type:</strong> ${data.type || 'Unknown'}</div>`;
         
         if (data.fullId) {
-          content += `<div style="margin-bottom: 4px; color: #9ca3af; font-size: 11px;"><strong>Full ID:</strong> ${data.fullId}</div>`;
+          content += `<div style="margin-bottom: 4px; color: ${currentTheme.colors.textSecondary}; font-size: 11px;"><strong>Full ID:</strong> ${data.fullId}</div>`;
         }
         
         if (data.dataset) {
-          content += `<div style="margin-bottom: 4px; color: #9ca3af; font-size: 11px;"><strong>Dataset:</strong> ${data.dataset}</div>`;
+          content += `<div style="margin-bottom: 4px; color: ${currentTheme.colors.textSecondary}; font-size: 11px;"><strong>Dataset:</strong> ${data.dataset}</div>`;
         }
         
         if (data.namespace) {
-          content += `<div style="margin-bottom: 4px; color: #9ca3af; font-size: 11px;"><strong>Namespace:</strong> ${data.namespace}</div>`;
+          content += `<div style="margin-bottom: 4px; color: ${currentTheme.colors.textSecondary}; font-size: 11px;"><strong>Namespace:</strong> ${data.namespace}</div>`;
         }
         
         content += `</div>`;
         
         // Column Information Section (for columns)
         if (data.type === 'column') {
-          content += `<div style="margin-bottom: 12px; padding: 8px; background: #1f2937; border-radius: 6px;">`;
-          content += `<div style="color: #e5e7eb; font-size: 12px; font-weight: bold; margin-bottom: 6px;">Column Information</div>`;
-          content += `<div style="margin-bottom: 4px; color: #9ca3af; font-size: 11px;"><strong>Field Name:</strong> ${data.label}</div>`;
-          content += `<div style="margin-bottom: 4px; color: #9ca3af; font-size: 11px;"><strong>Dataset:</strong> ${data.dataset}</div>`;
-          content += `<div style="margin-bottom: 4px; color: #9ca3af; font-size: 11px;"><strong>Namespace:</strong> ${data.namespace}</div>`;
+          content += `<div style="margin-bottom: 12px; padding: 8px; background: ${currentTheme.colors.surface}; border-radius: 6px;">`;
+          content += `<div style="color: ${currentTheme.colors.text}; font-size: 12px; font-weight: bold; margin-bottom: 6px;">Column Information</div>`;
+          content += `<div style="margin-bottom: 4px; color: ${currentTheme.colors.textSecondary}; font-size: 11px;"><strong>Field Name:</strong> ${data.label}</div>`;
+          content += `<div style="margin-bottom: 4px; color: ${currentTheme.colors.textSecondary}; font-size: 11px;"><strong>Dataset:</strong> ${data.dataset}</div>`;
+          content += `<div style="margin-bottom: 4px; color: ${currentTheme.colors.textSecondary}; font-size: 11px;"><strong>Namespace:</strong> ${data.namespace}</div>`;
           content += `</div>`;
         }
         
@@ -406,34 +408,34 @@ const ColumnLineageGraph: React.FC<ColumnLineageGraphProps> = ({
           const transform = data.transform;
           const lineage = data.lineage;
           
-          content += `<div style="margin-bottom: 12px; padding: 8px; background: #1f2937; border-radius: 6px;">`;
-          content += `<div style="color: #e5e7eb; font-size: 12px; font-weight: bold; margin-bottom: 6px;">Transform Information</div>`;
+          content += `<div style="margin-bottom: 12px; padding: 8px; background: ${currentTheme.colors.surface}; border-radius: 6px;">`;
+          content += `<div style="color: ${currentTheme.colors.text}; font-size: 12px; font-weight: bold; margin-bottom: 6px;">Transform Information</div>`;
           
           if (transform?.name) {
-            content += `<div style="margin-bottom: 4px; color: #9ca3af; font-size: 11px;"><strong>Transform Name:</strong> ${transform.name}</div>`;
+            content += `<div style="margin-bottom: 4px; color: ${currentTheme.colors.textSecondary}; font-size: 11px;"><strong>Transform Name:</strong> ${transform.name}</div>`;
           }
           
           if (lineage?.transformType) {
-            content += `<div style="margin-bottom: 4px; color: #9ca3af; font-size: 11px;"><strong>Transform Type:</strong> ${lineage.transformType}</div>`;
+            content += `<div style="margin-bottom: 4px; color: ${currentTheme.colors.textSecondary}; font-size: 11px;"><strong>Transform Type:</strong> ${lineage.transformType}</div>`;
           }
           
           if (lineage?.description) {
-            content += `<div style="margin-bottom: 4px; color: #9ca3af; font-size: 11px;"><strong>Description:</strong> ${lineage.description}</div>`;
+            content += `<div style="margin-bottom: 4px; color: ${currentTheme.colors.textSecondary}; font-size: 11px;"><strong>Description:</strong> ${lineage.description}</div>`;
           }
           
           if (transform?.language) {
-            content += `<div style="margin-bottom: 4px; color: #9ca3af; font-size: 11px;"><strong>Language:</strong> ${transform.language}</div>`;
+            content += `<div style="margin-bottom: 4px; color: ${currentTheme.colors.textSecondary}; font-size: 11px;"><strong>Language:</strong> ${transform.language}</div>`;
           }
           
           if (transform?.sourceFile) {
-            content += `<div style="margin-bottom: 4px; color: #9ca3af; font-size: 11px;"><strong>Source File:</strong> ${transform.sourceFile}</div>`;
+            content += `<div style="margin-bottom: 4px; color: ${currentTheme.colors.textSecondary}; font-size: 11px;"><strong>Source File:</strong> ${transform.sourceFile}</div>`;
           }
           
           // Show SQL if available
           if (lineage?.sql) {
-            content += `<div style="margin-top: 8px; color: #9ca3af; font-size: 11px;"><strong>SQL:</strong></div>`;
+            content += `<div style="margin-top: 8px; color: ${currentTheme.colors.textSecondary}; font-size: 11px;"><strong>SQL:</strong></div>`;
             const sqlPreview = lineage.sql.length > 200 ? lineage.sql.substring(0, 200) + '...' : lineage.sql;
-            content += `<div style="margin-top: 4px; color: #e5e7eb; font-size: 9px; font-family: monospace; background: #374151; padding: 6px; border-radius: 4px; white-space: pre-wrap; border-left: 3px solid #10b981;">${sqlPreview}</div>`;
+            content += `<div style="margin-top: 4px; color: ${currentTheme.colors.text}; font-size: 9px; font-family: monospace; background: ${currentTheme.colors.background}; padding: 6px; border-radius: 4px; white-space: pre-wrap; border-left: 3px solid ${currentTheme.colors.success};">${sqlPreview}</div>`;
           }
           
           content += `</div>`;

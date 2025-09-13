@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useCallback, useMemo } from 'react';
 import cytoscape from 'cytoscape';
 import { LineageGraph as LineageGraphType, ViewMode, LayoutAlgorithm } from '../types/lineage';
+import { useTheme } from '../contexts/ThemeContext';
 
 // Import and register dagre extension
 const dagre = require('cytoscape-dagre');
@@ -38,6 +39,7 @@ const CytoscapeLineageGraph: React.FC<CytoscapeLineageGraphProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const cyRef = useRef<cytoscape.Core | null>(null);
+  const { currentTheme } = useTheme();
 
   // Convert graph data to Cytoscape format
   const cytoscapeData = useMemo(() => {
@@ -138,38 +140,38 @@ const CytoscapeLineageGraph: React.FC<CytoscapeLineageGraphProps> = ({
           selector: 'node',
           style: {
             'background-color': (ele: any) => {
-              if (ele.data('highlighted')) return '#fef3c7';
+              if (ele.data('highlighted')) return currentTheme.cytoscape.node.dataset.selected.background;
               const type = ele.data('type');
               switch (type) {
                 case 'dataset':
-                  return '#eff6ff'; // Light blue background
+                  return currentTheme.cytoscape.node.dataset.background;
                 case 'job':
-                  return '#ecfdf5'; // Light green background
+                  return currentTheme.cytoscape.node.job.background;
                 case 'transform':
-                  return '#fffbeb'; // Light amber background
+                  return currentTheme.cytoscape.node.transform.background;
                 default:
-                  return '#f9fafb'; // Light gray background
+                  return currentTheme.colors.surface;
               }
             },
             'border-color': (ele: any) => {
-              if (ele.data('highlighted')) return '#f59e0b';
+              if (ele.data('highlighted')) return currentTheme.colors.accent;
               const type = ele.data('type');
               switch (type) {
                 case 'dataset':
-                  return '#3b82f6'; // Blue border
+                  return currentTheme.cytoscape.node.dataset.border;
                 case 'job':
-                  return '#10b981'; // Green border
+                  return currentTheme.cytoscape.node.job.border;
                 case 'transform':
-                  return '#f59e0b'; // Amber border
+                  return currentTheme.cytoscape.node.transform.border;
                 default:
-                  return '#6b7280'; // Gray border
+                  return currentTheme.colors.border;
               }
             },
             'border-width': 2,
             'label': 'data(label)',
             'text-valign': 'center',
             'text-halign': 'center',
-            'color': '#1f2937', // Dark gray/black text
+            'color': currentTheme.colors.text,
             'font-size': '12px',
             'font-weight': 'bold',
             'width': 200,
@@ -186,8 +188,8 @@ const CytoscapeLineageGraph: React.FC<CytoscapeLineageGraphProps> = ({
           selector: 'edge',
           style: {
             'width': 3,
-            'line-color': '#6b7280',
-            'target-arrow-color': '#6b7280',
+            'line-color': currentTheme.colors.border,
+            'target-arrow-color': currentTheme.colors.border,
             'target-arrow-shape': 'triangle',
             'curve-style': 'bezier',
             'opacity': 0.8,
@@ -197,38 +199,31 @@ const CytoscapeLineageGraph: React.FC<CytoscapeLineageGraphProps> = ({
         {
           selector: 'node:selected',
           style: {
-            'border-color': '#ef4444',
             'border-width': 3,
+            'border-color': currentTheme.colors.primary,
+            'background-color': (ele: any) => {
+              const type = ele.data('type');
+              switch (type) {
+                case 'dataset':
+                  return currentTheme.cytoscape.node.dataset.selected.background;
+                case 'job':
+                  return currentTheme.cytoscape.node.job.selected.background;
+                case 'transform':
+                  return currentTheme.cytoscape.node.transform.selected.background;
+                default:
+                  return currentTheme.colors.surface;
+              }
+            },
+            'font-size': '13px',
+            'font-weight': 'bold',
           },
         },
         {
           selector: 'edge:selected',
           style: {
-            'line-color': '#ef4444',
-            'target-arrow-color': '#ef4444',
+            'line-color': currentTheme.colors.error,
+            'target-arrow-color': currentTheme.colors.error,
             'opacity': 1,
-          },
-        },
-        {
-          selector: 'node:selected',
-          style: {
-            'border-width': 3,
-            'border-color': '#6366f1',
-            'background-color': (ele: any) => {
-              const type = ele.data('type');
-              switch (type) {
-                case 'dataset':
-                  return '#dbeafe'; // Darker blue on selection
-                case 'job':
-                  return '#d1fae5'; // Darker green on selection
-                case 'transform':
-                  return '#fef3c7'; // Darker amber on selection
-                default:
-                  return '#f3f4f6'; // Darker gray on selection
-              }
-            },
-            'font-size': '13px',
-            'font-weight': 'bold',
           },
         },
       ],
@@ -278,8 +273,8 @@ const CytoscapeLineageGraph: React.FC<CytoscapeLineageGraphProps> = ({
         tooltipRef.current.className = 'cytoscape-tooltip';
         tooltipRef.current.style.cssText = `
           position: absolute;
-          background: rgba(0, 0, 0, 0.9);
-          color: white;
+          background: ${currentTheme.cytoscape.tooltip.background};
+          color: ${currentTheme.cytoscape.tooltip.text};
           padding: 12px;
           border-radius: 8px;
           font-size: 12px;
@@ -287,7 +282,7 @@ const CytoscapeLineageGraph: React.FC<CytoscapeLineageGraphProps> = ({
           z-index: 1000;
           pointer-events: none;
           box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-          border: 1px solid #374151;
+          border: 1px solid ${currentTheme.cytoscape.tooltip.border};
         `;
 
         // Debug: Log the data being used for tooltip
@@ -299,28 +294,28 @@ const CytoscapeLineageGraph: React.FC<CytoscapeLineageGraphProps> = ({
         console.log('🔍 Data.data:', data.data);
       
         // Build tooltip content organized like Data Browser
-        let content = `<div style="font-weight: bold; margin-bottom: 12px; color: #fbbf24; font-size: 16px;">${data.label}</div>`;
+        let content = `<div style="font-weight: bold; margin-bottom: 12px; color: ${currentTheme.cytoscape.tooltip.accent}; font-size: 16px;">${data.label}</div>`;
       
       // Basic Information Section
-      content += `<div style="margin-bottom: 12px; padding: 8px; background: #1f2937; border-radius: 6px;">`;
-      content += `<div style="color: #e5e7eb; font-size: 12px; font-weight: bold; margin-bottom: 6px;">Basic Information</div>`;
+      content += `<div style="margin-bottom: 12px; padding: 8px; background: ${currentTheme.colors.surface}; border-radius: 6px;">`;
+      content += `<div style="color: ${currentTheme.colors.text}; font-size: 12px; font-weight: bold; margin-bottom: 6px;">Basic Information</div>`;
       
-      content += `<div style="margin-bottom: 4px; color: #9ca3af; font-size: 11px;"><strong>Type:</strong> ${data.type || 'Unknown'}</div>`;
+      content += `<div style="margin-bottom: 4px; color: ${currentTheme.colors.textSecondary}; font-size: 11px;"><strong>Type:</strong> ${data.type || 'Unknown'}</div>`;
       
       if (data.fullId) {
-        content += `<div style="margin-bottom: 4px; color: #9ca3af; font-size: 11px;"><strong>Full ID:</strong> ${data.fullId}</div>`;
+        content += `<div style="margin-bottom: 4px; color: ${currentTheme.colors.textSecondary}; font-size: 11px;"><strong>Full ID:</strong> ${data.fullId}</div>`;
       }
       
       if (data.description) {
-        content += `<div style="margin-bottom: 4px; color: #9ca3af; font-size: 11px;"><strong>Description:</strong> ${data.description}</div>`;
+        content += `<div style="margin-bottom: 4px; color: ${currentTheme.colors.textSecondary}; font-size: 11px;"><strong>Description:</strong> ${data.description}</div>`;
       }
       
       if (data.createdAt) {
-        content += `<div style="margin-bottom: 4px; color: #9ca3af; font-size: 11px;"><strong>Created:</strong> ${new Date(data.createdAt).toLocaleString()}</div>`;
+        content += `<div style="margin-bottom: 4px; color: ${currentTheme.colors.textSecondary}; font-size: 11px;"><strong>Created:</strong> ${new Date(data.createdAt).toLocaleString()}</div>`;
       }
       
       if (data.updatedAt) {
-        content += `<div style="margin-bottom: 4px; color: #9ca3af; font-size: 11px;"><strong>Updated:</strong> ${new Date(data.updatedAt).toLocaleString()}</div>`;
+        content += `<div style="margin-bottom: 4px; color: ${currentTheme.colors.textSecondary}; font-size: 11px;"><strong>Updated:</strong> ${new Date(data.updatedAt).toLocaleString()}</div>`;
       }
       
       content += `</div>`;
