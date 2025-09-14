@@ -12,7 +12,7 @@ from datetime import datetime
 from pathlib import Path
 
 # Marquez API configuration
-MARQUEZ_API_URL = "http://localhost:8080/api/v1"
+MARQUEZ_API_URL = "http://localhost:3004/api/v1"
 NAMESPACE = "data_pipeline"
 
 def create_namespace():

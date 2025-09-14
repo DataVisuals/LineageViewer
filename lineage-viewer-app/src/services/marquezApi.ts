@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { Dataset, Job, LineageGraph, LineageNode, LineageEdge, ColumnTransform } from '../types/lineage';
 
-const MARQUEZ_API_URL = 'http://localhost:3004/api/v1';
+const MARQUEZ_API_URL = 'http://localhost:3005/api/v1';
 const NAMESPACE = 'data_pipeline';
 
 const api = axios.create({
