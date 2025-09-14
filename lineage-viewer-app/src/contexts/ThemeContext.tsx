@@ -198,11 +198,11 @@ export const themes: Theme[] = [
           },
         },
         job: {
-          background: '#064e3b',
-          border: '#34d399',
+          background: '#166534',
+          border: '#22c55e',
           text: '#f8fafc',
           selected: {
-            background: '#065f46',
+            background: '#15803d',
             border: '#93c5fd',
           },
         },

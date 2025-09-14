@@ -162,20 +162,6 @@ const AppContent: React.FC = () => {
     setLayoutAlgorithm(algorithm);
   };
 
-  const handleApplyLayout = () => {
-    console.log('🔧 App: Apply layout requested');
-    // The LineageGraph component will handle this
-  };
-
-  const handleFitView = () => {
-    console.log('🔧 App: Fit view requested');
-    // The LineageGraph component will handle this
-  };
-
-  const handleRandomize = () => {
-    console.log('🔧 App: Randomize requested');
-    // The LineageGraph component will handle this
-  };
 
   if (isLoading) {
     return (
@@ -274,7 +260,7 @@ const AppContent: React.FC = () => {
       {/* Main Content */}
       <div className="flex h-[calc(100vh-4rem)]">
         {/* Control Panel */}
-        <div className="border-r overflow-y-auto" style={{ backgroundColor: currentTheme.colors.surface, borderColor: currentTheme.colors.border }}>
+        <div className="overflow-y-auto" style={{ backgroundColor: currentTheme.colors.surface }}>
           <ControlPanel
             viewMode={viewMode}
             onViewModeChange={handleViewModeChange}
@@ -283,9 +269,6 @@ const AppContent: React.FC = () => {
             graph={highlightedGraph || graph}
             layoutAlgorithm={layoutAlgorithm}
             onLayoutChange={handleLayoutChange}
-            onApplyLayout={handleApplyLayout}
-            onFitView={handleFitView}
-            onRandomize={handleRandomize}
             edgeLength={edgeLength}
             onEdgeLengthChange={handleEdgeLengthChange}
             layoutParams={layoutParams}
@@ -301,6 +284,7 @@ const AppContent: React.FC = () => {
             <div className="flex">
               <button
                 onClick={() => setActiveTab('graph')}
+                data-testid="graph-tab"
                 className={`px-4 py-2 text-sm font-medium border-b-2`}
                 style={{
                   borderBottomColor: activeTab === 'graph' ? currentTheme.colors.primary : 'transparent',
@@ -322,6 +306,7 @@ const AppContent: React.FC = () => {
               </button>
               <button
                 onClick={() => setActiveTab('browser')}
+                data-testid="browser-tab"
                 className={`px-4 py-2 text-sm font-medium border-b-2`}
                 style={{
                   borderBottomColor: activeTab === 'browser' ? currentTheme.colors.primary : 'transparent',
@@ -356,16 +341,12 @@ const AppContent: React.FC = () => {
                 edgeLength={edgeLength}
                 layoutParams={layoutParams}
                 onNodeClick={(nodeId) => console.log('Node clicked:', nodeId)}
-                onApplyLayout={handleApplyLayout}
-                onFitView={handleFitView}
-                onRandomize={handleRandomize}
               />
             )}
             {activeTab === 'browser' && highlightedGraph && (
               <DataBrowser
                 jobs={highlightedGraph.jobs || []}
                 datasets={highlightedGraph.datasets || []}
-                transforms={highlightedGraph.transforms || []}
                 onNodeClick={handleNodeClick}
               />
             )}

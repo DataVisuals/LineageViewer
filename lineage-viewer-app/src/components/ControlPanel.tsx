@@ -1,5 +1,5 @@
 import React from 'react';
-import { Settings, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Database, Cpu, BarChart3, Code, Workflow } from 'lucide-react';
+import { Settings, ChevronLeft, ChevronRight, Database, Cpu, BarChart3, Code, Workflow } from 'lucide-react';
 import { ViewMode } from '../types/lineage';
 import AutocompleteSearch from './AutocompleteSearch';
 import ThemeSelector from './ThemeSelector';
@@ -19,9 +19,6 @@ interface ControlPanelProps {
   };
   layoutAlgorithm?: LayoutAlgorithm;
   onLayoutChange?: (algorithm: LayoutAlgorithm) => void;
-  onApplyLayout?: () => void;
-  onFitView?: () => void;
-  onRandomize?: () => void;
   edgeLength?: number;
   onEdgeLengthChange?: (length: number) => void;
   layoutParams?: {
@@ -42,9 +39,6 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
   graph,
   layoutAlgorithm = 'dag',
   onLayoutChange,
-  onApplyLayout,
-  onFitView,
-  onRandomize,
   edgeLength = 150,
   onEdgeLengthChange,
   layoutParams = { nodeSpacing: 100, levelSpacing: 150, iterations: 150, damping: 0.7 },
@@ -53,7 +47,6 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
 }) => {
   const { currentTheme } = useTheme();
   const [isCollapsed, setIsCollapsed] = React.useState(false);
-  const [isTransformTypesExpanded, setIsTransformTypesExpanded] = React.useState(false);
 
   // Count unique languages used in jobs
   const getLanguageCount = () => {
@@ -168,16 +161,6 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
                   <Workflow className="w-4 h-4 inline mr-1" style={{ color: currentTheme.colors.primary }} />
                   Main Graph Layout
                 </label>
-                <div 
-                  className="text-xs mb-3 p-2 rounded"
-                  style={{ 
-                    color: currentTheme.colors.textSecondary,
-                    backgroundColor: currentTheme.colors.background,
-                    border: `1px solid ${currentTheme.colors.border}`
-                  }}
-                >
-                  💡 Adjust parameters below, then click "Re-apply" to update the layout
-                </div>
               <div className="space-y-3">
                 {/* Node Spacing */}
                 <div>
@@ -279,10 +262,11 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
                 <label className="text-sm font-medium mb-2 block" style={{ color: currentTheme.colors.text }}>
                   Layout Algorithm
                 </label>
-                <div className="grid grid-cols-2 gap-1 mb-3">
+                <div className="grid grid-cols-2 gap-1 mb-3" data-testid="layout-selector">
                   {(['hierarchical', 'circular', 'grid', 'force', 'flow', 'dag', 'sugiyama', 'manual'] as LayoutAlgorithm[]).map((algo) => (
                     <button
                       key={algo}
+                      data-testid={`layout-option-${algo}`}
                       onClick={() => {
                         console.log('🔧 ControlPanel: Layout button clicked:', algo);
                         onLayoutChange?.(algo);
@@ -311,124 +295,11 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
                   ))}
                 </div>
                 
-                <div className="flex gap-1">
-                  <button
-                    onClick={() => {
-                      console.log('🔧 ControlPanel: Re-apply button clicked');
-                      onApplyLayout?.();
-                    }}
-                    className="px-2 py-1 text-xs rounded transition-colors cursor-pointer"
-                    style={{ 
-                      backgroundColor: currentTheme.colors.success, 
-                      color: currentTheme.colors.text,
-                      border: `1px solid ${currentTheme.colors.border}`
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = currentTheme.colors.accent;
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = currentTheme.colors.success;
-                    }}
-                    title="Re-apply current layout"
-                  >
-                    Re-apply
-                  </button>
-                  <button
-                    onClick={() => {
-                      console.log('🔧 ControlPanel: Fit View button clicked');
-                      onFitView?.();
-                    }}
-                    className="px-2 py-1 text-xs rounded transition-colors cursor-pointer"
-                    style={{ 
-                      backgroundColor: currentTheme.colors.primary, 
-                      color: currentTheme.colors.text,
-                      border: `1px solid ${currentTheme.colors.border}`
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = currentTheme.colors.accent;
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = currentTheme.colors.primary;
-                    }}
-                  >
-                    Fit View
-                  </button>
-                  <button
-                    onClick={() => {
-                      console.log('🔧 ControlPanel: Randomize button clicked');
-                      onRandomize?.();
-                    }}
-                    className="px-2 py-1 text-xs rounded transition-colors cursor-pointer"
-                    style={{ 
-                      backgroundColor: currentTheme.colors.accent, 
-                      color: currentTheme.colors.text,
-                      border: `1px solid ${currentTheme.colors.border}`
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = currentTheme.colors.primary;
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = currentTheme.colors.accent;
-                    }}
-                  >
-                    Randomize
-                  </button>
-                </div>
               </div>
             </div>
           )}
 
 
-          {/* Transform Types - Collapsible Sub-panel */}
-          <div 
-            className="pt-4 border-t"
-            style={{ borderColor: currentTheme.colors.border }}
-          >
-            <button
-              onClick={() => setIsTransformTypesExpanded(!isTransformTypesExpanded)}
-              className="flex items-center justify-between w-full text-sm font-medium transition-colors"
-              style={{ color: currentTheme.colors.text }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.color = currentTheme.colors.primary;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.color = currentTheme.colors.text;
-              }}
-            >
-              <span>Transform Types</span>
-              {isTransformTypesExpanded ? (
-                <ChevronUp className="w-4 h-4" />
-              ) : (
-                <ChevronDown className="w-4 h-4" />
-              )}
-            </button>
-            
-            {isTransformTypesExpanded && (
-              <div className="mt-3 space-y-2">
-                {[
-                  'SPARK_OPERATION',
-                  'PANDAS_OPERATION',
-                  'SQL_OPERATION',
-                  'AGGREGATION',
-                  'STRING_FUNCTION',
-                  'TYPE_CONVERSION',
-                ].map((type) => (
-                  <label key={type} className="flex items-center">
-                    <input
-                      type="checkbox"
-                      className="rounded"
-                      style={{ 
-                        borderColor: currentTheme.colors.border, 
-                        accentColor: currentTheme.colors.primary
-                      }}
-                      defaultChecked
-                    />
-                    <span className="ml-2 text-sm" style={{ color: currentTheme.colors.textSecondary }}>{type}</span>
-                  </label>
-                ))}
-              </div>
-            )}
-          </div>
         </div>
       ) : (
         /* Collapsed state - clean minimal view with hover hint */

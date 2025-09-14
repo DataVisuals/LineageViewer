@@ -63,7 +63,7 @@ export interface LineageEdge {
   id: string;
   source: string;
   target: string;
-  type: 'table' | 'column' | 'default';
+  type: 'table' | 'column' | 'default' | 'transform';
   data?: {
     sourceColumn?: string;
     targetColumn?: string;

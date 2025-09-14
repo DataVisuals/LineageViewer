@@ -231,13 +231,15 @@ const AutocompleteSearch: React.FC<AutocompleteSearchProps> = ({
           placeholder={placeholder}
           value={query}
           onChange={handleInputChange}
+          data-testid="search-input"
           onKeyDown={handleKeyDown}
           className="w-full pl-10 pr-10 py-2 rounded-md"
           style={{
             backgroundColor: currentTheme.colors.background,
             border: `1px solid ${currentTheme.colors.border}`,
             color: currentTheme.colors.text,
-            outline: 'none'
+            outline: 'none',
+            fontSize: '12px'
           }}
           onFocus={(e) => {
             if (query.length > 0) setIsOpen(true);

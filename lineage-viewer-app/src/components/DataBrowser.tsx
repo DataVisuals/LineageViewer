@@ -1,73 +1,21 @@
 import React, { useState } from 'react';
-import { Database, Cpu, ChevronDown, ChevronRight, Zap } from 'lucide-react';
+import { Database, Cpu, ChevronDown, ChevronRight } from 'lucide-react';
 
 interface DataBrowserProps {
   jobs: any[];
   datasets: any[];
-  transforms: any[];
   onNodeClick?: (nodeId: string) => void;
 }
 
-const TransformItem: React.FC<{ transform: any; onNodeClick?: (nodeId: string) => void }> = ({ transform, onNodeClick }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const hasLongTransform = transform.transform && transform.transform.length > 10;
-  
-  return (
-    <div className="border-b border-secondary-100 last:border-b-0 hover:bg-secondary-50">
-      <div 
-        className="p-3 cursor-pointer"
-        onClick={() => onNodeClick?.(transform.id)}
-      >
-        <div className="font-medium text-sm">{transform.name}</div>
-        <div className="text-xs text-secondary-600 mt-1">
-          {transform.transformType} • {transform.inputFields?.length || 0} inputs
-        </div>
-        {transform.description && (
-          <div className="text-xs text-secondary-500 mt-1">{transform.description}</div>
-        )}
-      </div>
-      
-      {transform.transform && (
-        <div className="px-3 pb-3">
-          {hasLongTransform ? (
-            <div>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsExpanded(!isExpanded);
-                }}
-                className="flex items-center gap-1 text-xs text-secondary-600 hover:text-secondary-800 mb-2"
-              >
-                {isExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-                {isExpanded ? 'Hide SQL' : 'Show SQL'}
-              </button>
-              {isExpanded && (
-                <div className="text-xs text-secondary-500 font-mono bg-secondary-100 px-2 py-2 rounded max-h-32 overflow-y-auto">
-                  {transform.transform}
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="text-xs text-secondary-500 font-mono bg-secondary-100 px-2 py-1 rounded">
-              {transform.transform}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-};
 
-const DataBrowser: React.FC<DataBrowserProps> = ({ jobs, datasets, transforms, onNodeClick }) => {
-  console.log('🔍 DataBrowser received:', { jobs: jobs.length, datasets: datasets.length, transforms: transforms.length });
+const DataBrowser: React.FC<DataBrowserProps> = ({ jobs, datasets, onNodeClick }) => {
+  console.log('🔍 DataBrowser received:', { jobs: jobs.length, datasets: datasets.length });
   console.log('📊 Jobs:', jobs);
   console.log('📊 Datasets:', datasets);
-  console.log('📊 Transforms:', transforms);
   
   const [expandedSections, setExpandedSections] = useState({
     jobs: true,
     datasets: true,
-    transforms: true,
   });
 
   const toggleSection = (section: keyof typeof expandedSections) => {
@@ -166,31 +114,6 @@ const DataBrowser: React.FC<DataBrowserProps> = ({ jobs, datasets, transforms, o
         )}
       </div>
 
-      {/* Transforms Section */}
-      <div className="border border-secondary-200 rounded-lg">
-        <button
-          onClick={() => toggleSection('transforms')}
-          className="w-full flex items-center justify-between p-3 text-left hover:bg-secondary-50"
-        >
-          <div className="flex items-center gap-2">
-            <Zap className="w-4 h-4 text-purple-600" />
-            <span className="font-medium">Transforms ({transforms.length})</span>
-          </div>
-          {expandedSections.transforms ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-        </button>
-        
-        {expandedSections.transforms && (
-          <div className="border-t border-secondary-200">
-            {transforms.map((transform, index) => (
-              <TransformItem
-                key={transform.id || index}
-                transform={transform}
-                onNodeClick={onNodeClick}
-              />
-            ))}
-          </div>
-        )}
-      </div>
     </div>
   );
 };

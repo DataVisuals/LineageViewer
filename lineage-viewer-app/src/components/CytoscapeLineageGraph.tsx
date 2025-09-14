@@ -1,7 +1,8 @@
-import React, { useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useEffect, useRef, useCallback, useMemo, useState } from 'react';
 import cytoscape from 'cytoscape';
 import { LineageGraph as LineageGraphType, ViewMode, LayoutAlgorithm } from '../types/lineage';
 import { useTheme } from '../contexts/ThemeContext';
+import FileViewer from './FileViewer';
 
 // Import and register dagre extension
 const dagre = require('cytoscape-dagre');
@@ -20,9 +21,6 @@ interface CytoscapeLineageGraphProps {
     damping: number;
   };
   onNodeClick?: (nodeId: string) => void;
-  onApplyLayout?: () => void;
-  onFitView?: () => void;
-  onRandomize?: () => void;
 }
 
 const CytoscapeLineageGraph: React.FC<CytoscapeLineageGraphProps> = ({
@@ -33,46 +31,99 @@ const CytoscapeLineageGraph: React.FC<CytoscapeLineageGraphProps> = ({
   edgeLength,
   layoutParams,
   onNodeClick,
-  onApplyLayout,
-  onFitView,
-  onRandomize,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const cyRef = useRef<cytoscape.Core | null>(null);
   const { currentTheme } = useTheme();
+  
+  // File viewer state
+  const [fileViewer, setFileViewer] = useState<{
+    isOpen: boolean;
+    fileName: string;
+    fileContent: string;
+    language: string;
+    filePath?: string;
+  }>({
+    isOpen: false,
+    fileName: '',
+    fileContent: '',
+    language: 'text'
+  });
+
+  // Function to detect and handle file content
+  const handleFileClick = (fileContent: string, fileName: string, language: string = 'text', filePath?: string) => {
+    setFileViewer({
+      isOpen: true,
+      fileName,
+      fileContent,
+      language,
+      filePath
+    });
+  };
+
+  // Function to close file viewer
+  const closeFileViewer = () => {
+    setFileViewer(prev => ({ ...prev, isOpen: false }));
+  };
+
+  // Handle ESC key to close file viewer
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && fileViewer.isOpen) {
+        closeFileViewer();
+      }
+    };
+
+    if (fileViewer.isOpen) {
+      document.addEventListener('keydown', handleKeyDown);
+      return () => document.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [fileViewer.isOpen]);
 
   // Convert graph data to Cytoscape format
   const cytoscapeData = useMemo(() => {
     if (!graph?.nodes || !graph?.edges) return { nodes: [], edges: [] };
 
     const nodes = graph.nodes.map((node: any) => {
-      // Extract full dataset name but remove common prefix (like data_pipeline)
-      const fullId = node.id;
-      const parts = fullId.split('.');
+      const nodeType = node.data?.type || 'dataset';
+      let label = node.id;
       
-      // Common prefixes to remove
-      const commonPrefixes = ['data_pipeline', 'pipeline', 'data'];
       
-      let datasetName;
-      let prefix = '';
-      
-      // Check if the first part is a common prefix
-      if (parts.length > 1 && commonPrefixes.includes(parts[0])) {
-        prefix = parts[0];
-        datasetName = parts.slice(1).join('.'); // Remove prefix, keep rest
+      if (nodeType === 'transform') {
+        // For transform nodes, use the transform name or type
+        label = node.data?.data?.name || node.data?.data?.transformType || 'Transform';
+      } else if (nodeType === 'job') {
+        // For job nodes, use the job name
+        const jobName = node.data?.data?.name || node.id;
+        label = jobName; // Main label without icon
       } else {
-        // No common prefix found, use full name
-        datasetName = fullId;
+        // For dataset nodes, extract full dataset name but remove common prefix (like data_pipeline)
+        const fullId = node.id;
+        const parts = fullId.split('.');
+        
+        // Common prefixes to remove
+        const commonPrefixes = ['data_pipeline', 'pipeline', 'data'];
+        
+        let datasetName;
+        
+        // Check if the first part is a common prefix
+        if (parts.length > 1 && commonPrefixes.includes(parts[0])) {
+          datasetName = parts.slice(1).join('.'); // Remove prefix, keep rest
+        } else {
+          // No common prefix found, use full name
+          datasetName = fullId;
+        }
+        
+        label = datasetName; // Main label without icon
       }
       
       return {
         data: {
           id: node.id,
-          label: datasetName, // Show dataset name with common prefix removed
-          prefix: prefix,
-          fullId: fullId,
-          fullLabel: node.data?.name || node.id,
-          type: node.data?.type || 'dataset',
+          label: label,
+          fullId: node.id,
+          fullLabel: node.data?.data?.name || node.id,
+          type: nodeType,
           highlighted: node.data?.highlighted || false,
           ...node.data,
         },
@@ -118,18 +169,42 @@ const CytoscapeLineageGraph: React.FC<CytoscapeLineageGraphProps> = ({
   const tooltipTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const containerElementRef = useRef<HTMLElement | null>(null);
   const mouseLeaveHandlerRef = useRef<(() => void) | null>(null);
+  const isTooltipHoveredRef = useRef<boolean>(false);
 
   // Initialize Cytoscape
   useEffect(() => {
     if (!containerRef.current || !cytoscapeData.nodes.length) return;
+    
+    // Validate graph data
+    if (!cytoscapeData.nodes || cytoscapeData.nodes.length === 0) {
+      console.log('🔧 Cytoscape: No nodes available');
+      return;
+    }
+    
+    if (!cytoscapeData.edges) {
+      console.log('🔧 Cytoscape: No edges available');
+      return;
+    }
 
-    // Destroy existing instance
+    // Destroy existing instance with error handling
     if (cyRef.current) {
-      cyRef.current.destroy();
+      try {
+        if (!cyRef.current.destroyed()) {
+          cyRef.current.destroy();
+        }
+      } catch (error) {
+        console.error('Error destroying existing Cytoscape instance:', error);
+      }
     }
 
     // Create new Cytoscape instance
     console.log('🔧 Cytoscape: Creating instance with', cytoscapeData.nodes.length, 'nodes and', cytoscapeData.edges.length, 'edges');
+    
+    // Check if container exists
+    if (!containerRef.current) {
+      console.error('🔧 Cytoscape: Container not available');
+      return;
+    }
     
     try {
       cyRef.current = cytoscape({
@@ -142,6 +217,8 @@ const CytoscapeLineageGraph: React.FC<CytoscapeLineageGraphProps> = ({
             'background-color': (ele: any) => {
               if (ele.data('highlighted')) return currentTheme.cytoscape.node.dataset.selected.background;
               const type = ele.data('type');
+              
+              
               switch (type) {
                 case 'dataset':
                   return currentTheme.cytoscape.node.dataset.background;
@@ -172,13 +249,13 @@ const CytoscapeLineageGraph: React.FC<CytoscapeLineageGraphProps> = ({
             'text-valign': 'center',
             'text-halign': 'center',
             'color': currentTheme.colors.text,
-            'font-size': '12px',
+            'font-size': '16px',
             'font-weight': 'bold',
-            'width': 200,
-            'height': 60,
+            'width': 240,
+            'height': 80,
             'shape': 'round-rectangle',
             'text-wrap': 'wrap',
-            'text-max-width': '180px',
+            'text-max-width': '220px',
             'padding': '6px',
             'text-outline-width': 0,
             'text-outline-color': 'transparent',
@@ -267,6 +344,9 @@ const CytoscapeLineageGraph: React.FC<CytoscapeLineageGraphProps> = ({
         const node = event.target;
         const data = node.data();
         console.log('🔍 Node data extracted:', data);
+        
+        // Reset hover flag for new tooltip
+        isTooltipHoveredRef.current = false;
       
         // Create tooltip element
         tooltipRef.current = document.createElement('div');
@@ -280,7 +360,7 @@ const CytoscapeLineageGraph: React.FC<CytoscapeLineageGraphProps> = ({
           font-size: 12px;
           max-width: 300px;
           z-index: 1000;
-          pointer-events: none;
+          pointer-events: auto;
           box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
           border: 1px solid ${currentTheme.cytoscape.tooltip.border};
         `;
@@ -358,8 +438,32 @@ const CytoscapeLineageGraph: React.FC<CytoscapeLineageGraphProps> = ({
       // Job Information Section (for jobs)
       if (data.type === 'job') {
         const jobData = data.data; // Get the actual job data
+        
+        // Determine job type and get appropriate icon
+        const getJobTypeIcon = (jobData: any) => {
+          const language = jobData?.facets?.sourceCode?.language || jobData?.language || 'unknown';
+          const jobName = jobData?.name || '';
+          
+          if (language === 'python' || jobName.includes('python')) {
+            return '🐍'; // Python icon
+          } else if (language === 'spark' || jobName.includes('spark')) {
+            return '⚡'; // Spark icon
+          } else if (language === 'sql' || jobName.includes('sql')) {
+            return '🗃️'; // SQL icon
+          } else if (language === 'java' || jobName.includes('java')) {
+            return '☕'; // Java icon
+          } else if (jobName.includes('dbt')) {
+            return '🔧'; // DBT icon
+          } else {
+            return '⚙️'; // Default gear icon
+          }
+        };
+        
+        const jobIcon = getJobTypeIcon(jobData);
+        const jobType = jobData?.facets?.sourceCode?.language || jobData?.language || 'unknown';
+        
         content += `<div style="margin-bottom: 12px; padding: 8px; background: #1f2937; border-radius: 6px;">`;
-        content += `<div style="color: #e5e7eb; font-size: 12px; font-weight: bold; margin-bottom: 6px;">Job Information</div>`;
+        content += `<div style="color: #e5e7eb; font-size: 12px; font-weight: bold; margin-bottom: 6px;">${jobIcon} Job Information (${jobType.toUpperCase()})</div>`;
         
         if (jobData?.jobId) {
           content += `<div style="margin-bottom: 4px; color: #9ca3af; font-size: 11px;"><strong>Job ID:</strong> ${jobData.jobId}</div>`;
@@ -374,7 +478,30 @@ const CytoscapeLineageGraph: React.FC<CytoscapeLineageGraphProps> = ({
         }
         
         if (jobData?.sourceFile) {
-          content += `<div style="margin-bottom: 4px; color: #9ca3af; font-size: 11px;"><strong>Source File:</strong> ${jobData.sourceFile}</div>`;
+          const sourceFileName = jobData.sourceFile;
+          const sourceFileContent = `# Source File: ${sourceFileName}
+
+This file contains the source code for the job "${jobData.name || 'Unknown Job'}".
+
+## Job Information:
+- Job Name: ${jobData.name || 'Unknown'}
+- Namespace: ${jobData.namespace || 'Unknown'}
+- Language: ${jobData.language || 'Unknown'}
+- Type: ${jobData.type || 'Unknown'}
+
+## File Details:
+- File Path: ${sourceFileName}
+- Job ID: ${jobData.jobId || 'Unknown'}
+
+Note: This is a reference to the source file. The actual file content is not available in the metadata. To view the complete source code, please access the file directly from your development environment.
+
+## Related Code:
+${jobData.facets?.sourceCode?.source || 'No source code available in metadata'}`;
+          
+          // Store content in a data attribute to avoid escaping issues
+          const contentId = `source-${Math.random().toString(36).substr(2, 9)}`;
+          (window as any)[contentId] = sourceFileContent;
+          content += `<div style="margin-bottom: 4px; color: #9ca3af; font-size: 11px;"><strong>Source File:</strong> <span style="color: #60a5fa; cursor: pointer; text-decoration: underline;" onclick="window.openFileViewer('${sourceFileName}', window['${contentId}'], 'markdown', '${sourceFileName}')">${sourceFileName}</span></div>`;
         }
         
         if (jobData?.owner) {
@@ -385,16 +512,19 @@ const CytoscapeLineageGraph: React.FC<CytoscapeLineageGraphProps> = ({
           content += `<div style="margin-bottom: 4px; color: #9ca3af; font-size: 11px;"><strong>Tags:</strong> ${jobData.tags.join(', ')}</div>`;
         }
         
-        // Show source code if available
+        // Show source code if available (exclude Python as it's handled separately)
         if (jobData?.facets && jobData.facets.sourceCode) {
           const sourceCode = jobData.facets.sourceCode;
           const language = sourceCode.language || 'unknown';
           const code = sourceCode.source || sourceCode.code || '';
           
-          if (code) {
+          // Skip Python code here as it's handled by the specific Python section below
+          if (code && language !== 'python') {
             content += `<div style="margin-top: 8px; color: #9ca3af; font-size: 11px;"><strong>${language.toUpperCase()} Code:</strong></div>`;
             const codePreview = code.length > 300 ? code.substring(0, 300) + '...' : code;
-            content += `<div style="margin-top: 4px; color: #e5e7eb; font-size: 9px; font-family: monospace; background: #374151; padding: 6px; border-radius: 4px; white-space: pre-wrap; border-left: 3px solid #3b82f6;">${codePreview}</div>`;
+            const codeId = `code-${Math.random().toString(36).substr(2, 9)}`;
+            (window as any)[codeId] = code;
+            content += `<div style="margin-top: 4px; color: #e5e7eb; font-size: 9px; font-family: monospace; background: #374151; padding: 6px; border-radius: 4px; white-space: pre-wrap; border-left: 3px solid #3b82f6; cursor: pointer;" onclick="window.openFileViewer('${language}.${Math.random().toString(36).substr(2, 9)}', window['${codeId}'], '${language}', '${jobData.sourceFile || 'code'}')">${codePreview}</div>`;
           }
         }
         
@@ -406,11 +536,13 @@ const CytoscapeLineageGraph: React.FC<CytoscapeLineageGraphProps> = ({
           if (sqlCode) {
             content += `<div style="margin-top: 8px; color: #9ca3af; font-size: 11px;"><strong>SQL:</strong></div>`;
             const sqlPreview = sqlCode.length > 300 ? sqlCode.substring(0, 300) + '...' : sqlCode;
-            content += `<div style="margin-top: 4px; color: #e5e7eb; font-size: 9px; font-family: monospace; background: #374151; padding: 6px; border-radius: 4px; white-space: pre-wrap; border-left: 3px solid #10b981;">${sqlPreview}</div>`;
+            const sqlId = `sql-${Math.random().toString(36).substr(2, 9)}`;
+            (window as any)[sqlId] = sqlCode;
+            content += `<div style="margin-top: 4px; color: #e5e7eb; font-size: 9px; font-family: monospace; background: #374151; padding: 6px; border-radius: 4px; white-space: pre-wrap; border-left: 3px solid #10b981; cursor: pointer;" onclick="window.openFileViewer('${jobData.name || 'query'}.sql', window['${sqlId}'], 'sql', '${jobData.sourceFile || 'query.sql'}')">${sqlPreview}</div>`;
           }
         }
         
-        // Show Python code if available in facets
+        // Show Python code if available in facets (prioritize pythonCode, then sourceCode with python language)
         if (jobData?.facets && jobData.facets.pythonCode) {
           const pythonCode = jobData.facets.pythonCode;
           const code = pythonCode.source || pythonCode.code || pythonCode.script || pythonCode;
@@ -418,7 +550,20 @@ const CytoscapeLineageGraph: React.FC<CytoscapeLineageGraphProps> = ({
           if (code) {
             content += `<div style="margin-top: 8px; color: #9ca3af; font-size: 11px;"><strong>Python Code:</strong></div>`;
             const codePreview = code.length > 300 ? code.substring(0, 300) + '...' : code;
-            content += `<div style="margin-top: 4px; color: #e5e7eb; font-size: 9px; font-family: monospace; background: #374151; padding: 6px; border-radius: 4px; white-space: pre-wrap; border-left: 3px solid #f59e0b;">${codePreview}</div>`;
+            const pythonId = `python-${Math.random().toString(36).substr(2, 9)}`;
+            (window as any)[pythonId] = code;
+            content += `<div style="margin-top: 4px; color: #e5e7eb; font-size: 9px; font-family: monospace; background: #374151; padding: 6px; border-radius: 4px; white-space: pre-wrap; border-left: 3px solid #f59e0b; cursor: pointer;" onclick="window.openFileViewer('${jobData.name || 'script'}.py', window['${pythonId}'], 'python', '${jobData.sourceFile || 'script.py'}')">${codePreview}</div>`;
+          }
+        } else if (jobData?.facets && jobData.facets.sourceCode && jobData.facets.sourceCode.language === 'python') {
+          const pythonCode = jobData.facets.sourceCode;
+          const code = pythonCode.source || pythonCode.code || pythonCode.script || pythonCode;
+          
+          if (code) {
+            content += `<div style="margin-top: 8px; color: #9ca3af; font-size: 11px;"><strong>Python Code:</strong></div>`;
+            const codePreview = code.length > 300 ? code.substring(0, 300) + '...' : code;
+            const pythonId = `python-${Math.random().toString(36).substr(2, 9)}`;
+            (window as any)[pythonId] = code;
+            content += `<div style="margin-top: 4px; color: #e5e7eb; font-size: 9px; font-family: monospace; background: #374151; padding: 6px; border-radius: 4px; white-space: pre-wrap; border-left: 3px solid #f59e0b; cursor: pointer;" onclick="window.openFileViewer('${jobData.name || 'script'}.py', window['${pythonId}'], 'python', '${jobData.sourceFile || 'script.py'}')">${codePreview}</div>`;
           }
         }
         
@@ -429,45 +574,56 @@ const CytoscapeLineageGraph: React.FC<CytoscapeLineageGraphProps> = ({
       if (data.type === 'job' && data.data?.transforms && data.data.transforms.length > 0) {
         const jobData = data.data;
         content += `<div style="margin-bottom: 12px; padding: 8px; background: #1f2937; border-radius: 6px;">`;
-        content += `<div style="color: #e5e7eb; font-size: 12px; font-weight: bold; margin-bottom: 6px;">Transforms (${jobData.transforms.length})</div>`;
+        content += `<div style="color: #e5e7eb; font-size: 12px; font-weight: bold; margin-bottom: 8px;">Column Transformations (${jobData.transforms.length})</div>`;
         
-        // Group transforms by type
+        // Group transforms by type for better organization
         const transformsByType: { [key: string]: any[] } = {};
         jobData.transforms.forEach((transform: any) => {
-          const type = transform.transformType || transform.type || transform.language || 'unknown';
+          const type = transform.transformType || transform.type || 'unknown';
           if (!transformsByType[type]) {
             transformsByType[type] = [];
           }
           transformsByType[type].push(transform);
         });
         
-        // Display each transform type as a separate section
+        // Display each transform type as a separate subsection
         Object.entries(transformsByType).forEach(([type, transforms]) => {
-          content += `<div style="margin-bottom: 8px;">`;
-          content += `<div style="color: #9ca3af; font-size: 11px; font-weight: bold; margin-bottom: 4px; text-transform: capitalize;">${type} (${transforms.length})</div>`;
+          content += `<div style="margin-bottom: 12px;">`;
+          content += `<div style="color: #9ca3af; font-size: 11px; font-weight: 600; margin-bottom: 6px; text-transform: capitalize; border-bottom: 1px solid #374151; padding-bottom: 2px;">${type.replace(/_/g, ' ')} (${transforms.length})</div>`;
           
           transforms.forEach((transform: any, index: number) => {
-            content += `<div style="margin-bottom: 6px; padding: 4px; background: #374151; border-radius: 4px;">`;
-            content += `<div style="color: #e5e7eb; font-size: 10px; font-weight: bold;">${transform.name || `Transform ${index + 1}`}</div>`;
+            content += `<div style="margin-bottom: 8px; padding: 6px; background: #374151; border-radius: 4px; border-left: 3px solid #60a5fa;">`;
             
-            // Show transform code if available
-            const sqlCode = transform.sql || transform.transformation || transform.sqlCode || transform.query || transform.statement;
-            const pythonCode = transform.pythonCode || transform.python || transform.code || transform.script;
-            const sparkCode = transform.sparkCode || transform.spark || transform.sparkSql || transform.sparkQuery;
-            
-            if (sqlCode) {
-              const sqlPreview = sqlCode.length > 150 ? sqlCode.substring(0, 150) + '...' : sqlCode;
-              content += `<div style="margin-top: 4px; color: #6b7280; font-size: 9px; font-family: monospace; background: #1f2937; padding: 3px; border-radius: 3px; white-space: pre-wrap;">${sqlPreview}</div>`;
+            // Show the actual transformation function/operation
+            if (transform.transformation || transform.transform) {
+              const transformCode = transform.transformation || transform.transform;
+              content += `<div style="color: #e5e7eb; font-size: 11px; font-weight: 600; margin-bottom: 4px; font-family: monospace;">${transformCode}</div>`;
+            } else {
+              content += `<div style="color: #e5e7eb; font-size: 11px; font-weight: 600; margin-bottom: 4px;">${transform.name || `Transform ${index + 1}`}</div>`;
             }
             
-            if (pythonCode) {
-              const codePreview = pythonCode.length > 150 ? pythonCode.substring(0, 150) + '...' : pythonCode;
-              content += `<div style="margin-top: 4px; color: #6b7280; font-size: 9px; font-family: monospace; background: #1f2937; padding: 3px; border-radius: 3px; white-space: pre-wrap;">${codePreview}</div>`;
+            // Show description if available
+            if (transform.description) {
+              content += `<div style="margin-bottom: 4px; color: #9ca3af; font-size: 10px; font-style: italic;">${transform.description}</div>`;
             }
             
-            if (sparkCode) {
-              const sparkPreview = sparkCode.length > 150 ? sparkCode.substring(0, 150) + '...' : sparkCode;
-              content += `<div style="margin-top: 4px; color: #6b7280; font-size: 9px; font-family: monospace; background: #1f2937; padding: 3px; border-radius: 3px; white-space: pre-wrap;">${sparkPreview}</div>`;
+            // Show input fields with their transformations
+            if (transform.inputFields && transform.inputFields.length > 0) {
+              content += `<div style="margin-bottom: 4px; color: #9ca3af; font-size: 10px;"><strong>Input Columns:</strong></div>`;
+              transform.inputFields.forEach((field: any) => {
+                const fieldName = `${field.namespace}.${field.name}.${field.field}`;
+                const transformDesc = field.transformationDescription || field.transformation || 'No transformation details';
+                content += `<div style="margin-left: 8px; margin-bottom: 2px; color: #e5e7eb; font-size: 9px; font-family: monospace;">${fieldName}</div>`;
+                content += `<div style="margin-left: 12px; margin-bottom: 4px; color: #9ca3af; font-size: 9px;">→ ${transformDesc}</div>`;
+              });
+            }
+            
+            // Show output fields if available
+            if (transform.outputFields && transform.outputFields.length > 0) {
+              content += `<div style="margin-top: 4px; color: #9ca3af; font-size: 10px;"><strong>Output Columns:</strong></div>`;
+              transform.outputFields.forEach((field: any) => {
+                content += `<div style="margin-left: 8px; color: #e5e7eb; font-size: 9px; font-family: monospace;">${field.name}</div>`;
+              });
             }
             
             content += `</div>`;
@@ -478,14 +634,94 @@ const CytoscapeLineageGraph: React.FC<CytoscapeLineageGraphProps> = ({
         
         content += `</div>`;
       }
-      
-      // Column Lineage Information Section (for transforms with column lineage)
-      if (data.type === 'job' && data.data?.transforms) {
-        // Column lineage information would go here if needed
-      }
+
+        // Add global function for file opening
+        (window as any).openFileViewer = (fileName: string, fileContent: string, language: string, filePath?: string) => {
+          handleFileClick(fileContent, fileName, language, filePath);
+        };
 
         tooltipRef.current.innerHTML = content;
         document.body.appendChild(tooltipRef.current);
+
+        // Check if tooltip has clickable elements
+        const hasClickableElements = content.includes('onclick=') || content.includes('cursor: pointer');
+        
+        if (hasClickableElements) {
+          // For tooltips with clickable elements, COMPLETELY disable auto-removal
+          console.log('🔍 Tooltip has clickable elements - DISABLING ALL auto-removal');
+          
+          // Set hover flag to true and keep it true
+          isTooltipHoveredRef.current = true;
+          
+          // Add mouse enter handler to tooltip to ensure it stays open
+          tooltipRef.current.addEventListener('mouseenter', () => {
+            console.log('🔍 Mouse entered tooltip with clickables');
+            isTooltipHoveredRef.current = true;
+            if (tooltipTimeoutRef.current) {
+              clearTimeout(tooltipTimeoutRef.current);
+              tooltipTimeoutRef.current = null;
+            }
+          });
+
+          // Add click handler to prevent tooltip removal when clicking
+          tooltipRef.current.addEventListener('click', (e) => {
+            e.stopPropagation();
+            console.log('🔍 Tooltip with clickables clicked');
+            isTooltipHoveredRef.current = true;
+          });
+
+          // Add a close button to the tooltip for manual dismissal
+          const closeButton = document.createElement('div');
+          closeButton.innerHTML = '×';
+          closeButton.style.cssText = `
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            width: 20px;
+            height: 20px;
+            background: #374151;
+            color: #e5e7eb;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            z-index: 1001;
+          `;
+          closeButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            console.log('🔍 Close button clicked');
+            removeTooltip();
+          });
+          tooltipRef.current.appendChild(closeButton);
+
+          // NO mouseleave handler for clickable tooltips - they stay open until manually closed
+        } else {
+          // For tooltips without clickable elements, use normal behavior
+          tooltipRef.current.addEventListener('mouseleave', () => {
+            console.log('🔍 Mouse left tooltip');
+            isTooltipHoveredRef.current = false;
+            if (tooltipTimeoutRef.current) {
+              clearTimeout(tooltipTimeoutRef.current);
+            }
+            tooltipTimeoutRef.current = setTimeout(() => {
+              if (!isTooltipHoveredRef.current) {
+                removeTooltip();
+              }
+            }, 200);
+          });
+
+          tooltipRef.current.addEventListener('mouseenter', () => {
+            console.log('🔍 Mouse entered tooltip');
+            isTooltipHoveredRef.current = true;
+            if (tooltipTimeoutRef.current) {
+              clearTimeout(tooltipTimeoutRef.current);
+              tooltipTimeoutRef.current = null;
+            }
+          });
+        }
 
         // Position tooltip
         const updateTooltipPosition = () => {
@@ -541,10 +777,24 @@ const CytoscapeLineageGraph: React.FC<CytoscapeLineageGraphProps> = ({
         clearTimeout(tooltipTimeoutRef.current);
       }
       
-      // Set a small delay before removing tooltip to allow for mouse movement
-      tooltipTimeoutRef.current = setTimeout(() => {
-        removeTooltip();
-      }, 150);
+      // Check if current tooltip has clickable elements
+      const hasClickableElements = tooltipRef.current && (
+        tooltipRef.current.innerHTML.includes('onclick=') || 
+        tooltipRef.current.innerHTML.includes('cursor: pointer')
+      );
+      
+      if (hasClickableElements) {
+        // For tooltips with clickables, DO NOTHING - they stay open until manually closed
+        console.log('🔍 Tooltip has clickables - IGNORING mouseout event');
+        return;
+      } else {
+        // For normal tooltips, use normal behavior
+        tooltipTimeoutRef.current = setTimeout(() => {
+          if (!isTooltipHoveredRef.current) {
+            removeTooltip();
+          }
+        }, 500); // Normal delay for non-clickable tooltips
+      }
     });
 
     // Also add a global mouseout to catch cases where we leave the container
@@ -554,9 +804,24 @@ const CytoscapeLineageGraph: React.FC<CytoscapeLineageGraphProps> = ({
         clearTimeout(tooltipTimeoutRef.current);
       }
       
-      tooltipTimeoutRef.current = setTimeout(() => {
-        removeTooltip();
-      }, 150);
+      // Check if current tooltip has clickable elements
+      const hasClickableElements = tooltipRef.current && (
+        tooltipRef.current.innerHTML.includes('onclick=') || 
+        tooltipRef.current.innerHTML.includes('cursor: pointer')
+      );
+      
+      if (hasClickableElements) {
+        // For tooltips with clickables, DO NOTHING - they stay open until manually closed
+        console.log('🔍 Tooltip has clickables - IGNORING global mouseout event');
+        return;
+      } else {
+        // For normal tooltips, use normal behavior
+        tooltipTimeoutRef.current = setTimeout(() => {
+          if (!isTooltipHoveredRef.current) {
+            removeTooltip();
+          }
+        }, 200);
+      }
     });
 
     // Add mouse leave event to the container to ensure tooltip is removed
@@ -568,14 +833,36 @@ const CytoscapeLineageGraph: React.FC<CytoscapeLineageGraphProps> = ({
         if (tooltipTimeoutRef.current) {
           clearTimeout(tooltipTimeoutRef.current);
         }
-        removeTooltip();
+        
+        // Check if current tooltip has clickable elements
+        const hasClickableElements = tooltipRef.current && (
+          tooltipRef.current.innerHTML.includes('onclick=') || 
+          tooltipRef.current.innerHTML.includes('cursor: pointer')
+        );
+        
+        if (hasClickableElements) {
+          // For tooltips with clickables, DO NOTHING - they stay open until manually closed
+          console.log('🔍 Tooltip has clickables - IGNORING container mouseleave event');
+          return;
+        } else {
+          // For normal tooltips, use normal behavior
+          if (!isTooltipHoveredRef.current) {
+            removeTooltip();
+          }
+        }
       };
       containerElementRef.current.addEventListener('mouseleave', mouseLeaveHandlerRef.current);
     }
 
-    // Set zoom limits
-    cyRef.current.minZoom(0.1);
-    cyRef.current.maxZoom(4);
+    // Set zoom limits with error handling
+    try {
+      if (cyRef.current && !cyRef.current.destroyed()) {
+        cyRef.current.minZoom(0.1);
+        cyRef.current.maxZoom(4);
+      }
+    } catch (error) {
+      console.error('Error setting zoom limits:', error);
+    }
     
     } catch (error) {
       console.error('🔧 Cytoscape: Error creating instance:', error);
@@ -600,20 +887,37 @@ const CytoscapeLineageGraph: React.FC<CytoscapeLineageGraphProps> = ({
         containerElementRef.current.removeEventListener('mouseleave', mouseLeaveHandlerRef.current);
       }
       
-      // Destroy cytoscape instance
+      // Destroy cytoscape instance with error handling
       if (cyRef.current) {
-        cyRef.current.destroy();
-        cyRef.current = null;
+        try {
+          if (!cyRef.current.destroyed()) {
+            cyRef.current.destroy();
+          }
+        } catch (error) {
+          console.error('Error destroying Cytoscape instance:', error);
+        } finally {
+          cyRef.current = null;
+        }
       }
     };
   }, [cytoscapeData, onNodeClick, currentTheme]);
 
   // Apply layout algorithm
   const applyLayout = useCallback((algorithm: LayoutAlgorithm) => {
-    if (!cyRef.current) return;
+    if (!cyRef.current || cyRef.current.destroyed()) {
+      console.log('🔧 Cytoscape: Instance not available or destroyed');
+      return;
+    }
 
     console.log('🔧 Cytoscape: Applying layout algorithm:', algorithm);
     console.log('🔧 Cytoscape: Parameters:', { edgeLength, layoutParams });
+
+    // Check if there are any nodes to layout
+    const nodes = cyRef.current.nodes();
+    if (!nodes || nodes.length === 0) {
+      console.log('🔧 Cytoscape: No nodes to layout');
+      return;
+    }
 
     const layoutOptions: any = {
       name: algorithm,
@@ -690,57 +994,42 @@ const CytoscapeLineageGraph: React.FC<CytoscapeLineageGraphProps> = ({
         return;
     }
 
-    // Apply the layout
-    const layout = cyRef.current.layout(layoutOptions);
-    layout.run();
+    // Apply the layout with error handling
+    try {
+      const layout = cyRef.current.layout(layoutOptions);
+      if (layout && typeof layout.run === 'function') {
+        layout.run();
+      }
+    } catch (error) {
+      console.error('Error applying layout:', error);
+    }
   }, [edgeLength, layoutParams, cytoscapeData.nodes.length]);
 
   // Re-apply layout when algorithm changes
   useEffect(() => {
     if (cyRef.current && layoutAlgorithm !== 'manual') {
-      applyLayout(layoutAlgorithm);
+      // Add a small delay to ensure Cytoscape is fully initialized
+      const timeoutId = setTimeout(() => {
+        if (cyRef.current && !cyRef.current.destroyed()) {
+          applyLayout(layoutAlgorithm);
+        }
+      }, 100);
+      
+      return () => clearTimeout(timeoutId);
     }
   }, [layoutAlgorithm, applyLayout]);
 
-  // Handle fit view
-  const handleFitView = useCallback(() => {
-    if (cyRef.current) {
-      cyRef.current.fit(undefined, 50);
-    }
-  }, []);
 
-  // Handle randomize
-  const handleRandomize = useCallback(() => {
-    if (cyRef.current) {
-      const nodes = cyRef.current.nodes();
-      const width = containerRef.current?.clientWidth || 800;
-      const height = containerRef.current?.clientHeight || 600;
-      
-      nodes.forEach((node: any) => {
-        node.position({
-          x: Math.random() * width,
-          y: Math.random() * height,
-        });
-      });
-      
-      cyRef.current.fit(undefined, 50);
-    }
-  }, []);
-
-  // Expose functions to parent using refs to avoid React Hook warnings
-  const onFitViewRef = useRef(onFitView);
-  const onRandomizeRef = useRef(onRandomize);
-  
-  useEffect(() => {
-    onFitViewRef.current = handleFitView;
-    onRandomizeRef.current = handleRandomize;
-  }, [handleFitView, handleRandomize]);
 
   // Handle window resize
   useEffect(() => {
     const handleResize = () => {
-      if (cyRef.current) {
-        cyRef.current.resize();
+      if (cyRef.current && !cyRef.current.destroyed()) {
+        try {
+          cyRef.current.resize();
+        } catch (error) {
+          console.error('Error resizing Cytoscape:', error);
+        }
       }
     };
 
@@ -752,12 +1041,21 @@ const CytoscapeLineageGraph: React.FC<CytoscapeLineageGraphProps> = ({
     <div className="w-full h-full relative">
       <div 
         ref={containerRef} 
+        data-testid="cytoscape-graph"
         className="w-full h-full"
         style={{ 
           background: currentTheme.colors.background,
           border: `1px solid ${currentTheme.colors.border}`,
           borderRadius: '8px',
         }}
+      />
+      <FileViewer
+        isOpen={fileViewer.isOpen}
+        onClose={closeFileViewer}
+        fileName={fileViewer.fileName}
+        fileContent={fileViewer.fileContent}
+        language={fileViewer.language}
+        filePath={fileViewer.filePath}
       />
     </div>
   );

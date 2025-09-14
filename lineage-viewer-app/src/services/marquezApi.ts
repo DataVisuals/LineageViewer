@@ -42,7 +42,7 @@ export class MarquezApiService {
           name: 'dbt_models',
           namespace: 'data_pipeline',
           type: 'dbt',
-          inputs: ['raw_customers', 'raw_orders', 'raw_transactions'],
+          inputs: ['attributes', 'raw_customers', 'raw_orders', 'raw_transactions'],
           outputs: ['customer_aggregation', 'processed_data'],
           description: 'DBT models for data transformation and aggregation',
           language: 'dbt',
@@ -131,6 +131,90 @@ export class MarquezApiService {
       
       // Add DBT datasets to the datasets array
       const dbtDatasets = [
+        // Raw datasets
+        {
+          id: 'data_pipeline.attributes',
+          name: 'attributes',
+          namespace: 'data_pipeline',
+          type: 'raw_table',
+          columns: [],
+          description: 'Raw attributes dataset',
+          tags: ['raw', 'source'],
+          fields: [
+            { name: 'id', type: 'string' },
+            { name: 'name', type: 'string' },
+            { name: 'value', type: 'string' }
+          ],
+          facets: {
+            source: {
+              type: 'database',
+              name: 'source_db'
+            }
+          }
+        },
+        {
+          id: 'data_pipeline.raw_customers',
+          name: 'raw_customers',
+          namespace: 'data_pipeline',
+          type: 'raw_table',
+          columns: [],
+          description: 'Raw customers dataset',
+          tags: ['raw', 'source'],
+          fields: [
+            { name: 'id', type: 'string' },
+            { name: 'name', type: 'string' },
+            { name: 'email', type: 'string' }
+          ],
+          facets: {
+            source: {
+              type: 'database',
+              name: 'source_db'
+            }
+          }
+        },
+        {
+          id: 'data_pipeline.raw_orders',
+          name: 'raw_orders',
+          namespace: 'data_pipeline',
+          type: 'raw_table',
+          columns: [],
+          description: 'Raw orders dataset',
+          tags: ['raw', 'source'],
+          fields: [
+            { name: 'id', type: 'string' },
+            { name: 'customer_id', type: 'string' },
+            { name: 'amount', type: 'decimal' },
+            { name: 'date', type: 'date' }
+          ],
+          facets: {
+            source: {
+              type: 'database',
+              name: 'source_db'
+            }
+          }
+        },
+        {
+          id: 'data_pipeline.raw_transactions',
+          name: 'raw_transactions',
+          namespace: 'data_pipeline',
+          type: 'raw_table',
+          columns: [],
+          description: 'Raw transactions dataset',
+          tags: ['raw', 'source'],
+          fields: [
+            { name: 'id', type: 'string' },
+            { name: 'amount', type: 'decimal' },
+            { name: 'category', type: 'string' },
+            { name: 'date', type: 'date' }
+          ],
+          facets: {
+            source: {
+              type: 'database',
+              name: 'source_db'
+            }
+          }
+        },
+        // Processed datasets
         {
           id: 'data_pipeline.customer_aggregation',
           name: 'customer_aggregation',
@@ -256,25 +340,51 @@ export class MarquezApiService {
 
     // Don't create field-level nodes - transform data will be included in job hovers instead
 
-    // Extract all transforms from datasets
+    // Extract all transforms from datasets (columns with transform data)
     const transforms: any[] = [];
-    // No column lineage processing needed
+    datasets.forEach(dataset => {
+      if (dataset.columns && dataset.columns.length > 0) {
+        dataset.columns.forEach((column: any) => {
+          if (column.transformType || column.transform) {
+            transforms.push({
+              id: column.id || `${dataset.id}.${column.name}`,
+              name: column.name,
+              transformType: column.transformType || 'unknown',
+              transform: column.transform,
+              description: column.description,
+              inputFields: column.inputFields || [],
+              datasetId: dataset.id,
+              datasetName: dataset.name,
+              // Find the job that produces this dataset
+              jobId: jobs.find(job => job.outputs.includes(dataset.name))?.id || 'unknown',
+              jobName: jobs.find(job => job.outputs.includes(dataset.name))?.name || 'unknown',
+            });
+          }
+        });
+      }
+    });
 
     // Add job nodes
     jobs.forEach((job, index) => {
+      // Find transforms for this job
+      const jobTransforms = transforms.filter(transform => transform.jobId === job.id);
+      
       nodes.push({
         id: job.id,
         type: 'lineageNode',
         data: {
           type: 'job',
-          data: job,
+          data: {
+            ...job,
+            transforms: jobTransforms, // Add transforms to job data
+          },
         },
         position: { x: index * 300, y: 300 },
         draggable: true,
       });
     });
 
-    // No transform nodes needed
+    // Don't create transform nodes - show them in job tooltips instead
 
     // Create table-level edges
     jobs.forEach(job => {
@@ -303,7 +413,7 @@ export class MarquezApiService {
       });
     });
 
-    // No column-level edges needed
+    // Don't create transform edges - transforms shown in job tooltips
 
     console.log('🎯 Final graph:', { nodes: nodes.length, edges: edges.length, transforms: transforms.length });
     console.log('📋 Node IDs:', nodes.map(n => n.id));
