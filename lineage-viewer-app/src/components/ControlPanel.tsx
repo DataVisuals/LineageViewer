@@ -1,7 +1,9 @@
 import React from 'react';
-import { Settings, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Database, Cpu, BarChart3, Code } from 'lucide-react';
+import { Settings, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Database, Cpu, BarChart3, Code, Workflow } from 'lucide-react';
 import { ViewMode } from '../types/lineage';
 import AutocompleteSearch from './AutocompleteSearch';
+import ThemeSelector from './ThemeSelector';
+import { useTheme } from '../contexts/ThemeContext';
 
 type LayoutAlgorithm = 'hierarchical' | 'circular' | 'grid' | 'force' | 'flow' | 'dag' | 'sugiyama' | 'manual';
 
@@ -29,6 +31,7 @@ interface ControlPanelProps {
     damping?: number;
   };
   onLayoutParamsChange?: (params: any) => void;
+  activeTab?: 'graph' | 'browser';
 }
 
 const ControlPanel: React.FC<ControlPanelProps> = ({
@@ -46,7 +49,9 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
   onEdgeLengthChange,
   layoutParams = { nodeSpacing: 100, levelSpacing: 150, iterations: 150, damping: 0.7 },
   onLayoutParamsChange,
+  activeTab = 'graph',
 }) => {
+  const { currentTheme } = useTheme();
   const [isCollapsed, setIsCollapsed] = React.useState(false);
   const [isTransformTypesExpanded, setIsTransformTypesExpanded] = React.useState(false);
 
@@ -66,25 +71,42 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
   };
 
   return (
-    <div className={`control-panel transition-all duration-300 ${isCollapsed ? 'w-12' : 'w-80'} ${isCollapsed ? 'min-w-12' : 'min-w-80'} ${isCollapsed ? 'max-w-12' : 'max-w-80'} overflow-hidden bg-white border-r border-secondary-200 shadow-sm`}>
+    <div 
+      className={`control-panel transition-all duration-300 ${isCollapsed ? 'w-12' : 'w-80'} ${isCollapsed ? 'min-w-12' : 'min-w-80'} ${isCollapsed ? 'max-w-12' : 'max-w-80'} overflow-hidden shadow-sm`}
+      style={{ 
+        backgroundColor: currentTheme.colors.surface,
+        borderRight: `1px solid ${currentTheme.colors.border}`
+      }}
+    >
       {/* Header with collapse toggle */}
-      <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'} mb-4 p-4 border-b border-secondary-200`}>
-        {!isCollapsed && <h2 className="text-lg font-semibold text-secondary-900">Lineage Controls</h2>}
+      <div 
+        className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'} mb-4 p-4 border-b`}
+        style={{ borderColor: currentTheme.colors.border }}
+      >
+        {!isCollapsed && <h2 className="text-lg font-semibold" style={{ color: currentTheme.colors.text }}>Lineage Controls</h2>}
         <div className="flex items-center gap-2">
-          {!isCollapsed && <Settings className="w-5 h-5 text-secondary-500" />}
+          {!isCollapsed && <Settings className="w-5 h-5" style={{ color: currentTheme.colors.textSecondary }} />}
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className={`p-2 rounded-lg transition-all duration-200 ${
-              isCollapsed 
-                ? 'hover:bg-secondary-100 hover:shadow-sm' 
-                : 'hover:bg-secondary-100 hover:shadow-sm'
-            }`}
+            className="p-2 rounded-lg transition-all duration-200"
+            style={{
+              backgroundColor: 'transparent',
+              color: currentTheme.colors.textSecondary
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = currentTheme.colors.border;
+              e.currentTarget.style.color = currentTheme.colors.text;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'transparent';
+              e.currentTarget.style.color = currentTheme.colors.textSecondary;
+            }}
             title={isCollapsed ? 'Expand controls panel' : 'Collapse controls panel'}
           >
             {isCollapsed ? (
-              <ChevronRight className="w-4 h-4 text-secondary-600" />
+              <ChevronRight className="w-4 h-4" style={{ color: currentTheme.colors.textSecondary }} />
             ) : (
-              <ChevronLeft className="w-4 h-4 text-secondary-600" />
+              <ChevronLeft className="w-4 h-4" style={{ color: currentTheme.colors.textSecondary }} />
             )}
           </button>
         </div>
@@ -93,29 +115,38 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
       {/* Collapsible content */}
       {!isCollapsed ? (
         <div className="p-4 space-y-4">
+          {/* Theme Selector */}
+          <ThemeSelector />
+
           {/* Statistics */}
-          <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-            <h3 className="text-sm font-semibold text-gray-700 mb-2">Statistics</h3>
+          <div 
+            className="mb-4 p-3 rounded-lg"
+            style={{ 
+              backgroundColor: currentTheme.colors.background,
+              border: `1px solid ${currentTheme.colors.border}`
+            }}
+          >
+            <h3 className="text-sm font-semibold mb-2" style={{ color: currentTheme.colors.text }}>Statistics</h3>
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div className="flex items-center gap-1">
                 <Database className="w-3 h-3 text-blue-500" />
-                <span className="text-gray-600">Datasets:</span>
-                <span className="font-semibold">{graph?.datasets?.length || 0}</span>
+                <span style={{ color: currentTheme.colors.textSecondary }}>Datasets:</span>
+                <span className="font-semibold" style={{ color: currentTheme.colors.text }}>{graph?.datasets?.length || 0}</span>
               </div>
               <div className="flex items-center gap-1">
                 <Cpu className="w-3 h-3 text-green-500" />
-                <span className="text-gray-600">Jobs:</span>
-                <span className="font-semibold">{graph?.jobs?.length || 0}</span>
+                <span style={{ color: currentTheme.colors.textSecondary }}>Jobs:</span>
+                <span className="font-semibold" style={{ color: currentTheme.colors.text }}>{graph?.jobs?.length || 0}</span>
               </div>
               <div className="flex items-center gap-1">
                 <BarChart3 className="w-3 h-3 text-purple-500" />
-                <span className="text-gray-600">Transforms:</span>
-                <span className="font-semibold">{graph?.transforms?.length || 0}</span>
+                <span style={{ color: currentTheme.colors.textSecondary }}>Transforms:</span>
+                <span className="font-semibold" style={{ color: currentTheme.colors.text }}>{graph?.transforms?.length || 0}</span>
               </div>
               <div className="flex items-center gap-1">
                 <Code className="w-3 h-3 text-yellow-500" />
-                <span className="text-gray-600">Languages:</span>
-                <span className="font-semibold">{getLanguageCount()}</span>
+                <span style={{ color: currentTheme.colors.textSecondary }}>Languages:</span>
+                <span className="font-semibold" style={{ color: currentTheme.colors.text }}>{getLanguageCount()}</span>
               </div>
             </div>
           </div>
@@ -129,19 +160,28 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
             />
           </div>
 
-          {/* Layout Parameters */}
-          <div className="space-y-3">
-            <div>
-              <label className="text-sm font-medium text-secondary-700 mb-2 block">
-                Layout Parameters
-              </label>
-              <div className="text-xs text-gray-500 mb-3 p-2 bg-gray-50 rounded">
-                💡 Adjust parameters below, then click "Re-apply" to update the layout
-              </div>
+          {/* Context-sensitive controls based on active tab */}
+          {activeTab === 'graph' && (
+            <div className="space-y-3">
+              <div>
+                <label className="text-sm font-medium mb-2 block" style={{ color: currentTheme.colors.text }}>
+                  <Workflow className="w-4 h-4 inline mr-1" style={{ color: currentTheme.colors.primary }} />
+                  Main Graph Layout
+                </label>
+                <div 
+                  className="text-xs mb-3 p-2 rounded"
+                  style={{ 
+                    color: currentTheme.colors.textSecondary,
+                    backgroundColor: currentTheme.colors.background,
+                    border: `1px solid ${currentTheme.colors.border}`
+                  }}
+                >
+                  💡 Adjust parameters below, then click "Re-apply" to update the layout
+                </div>
               <div className="space-y-3">
                 {/* Node Spacing */}
                 <div>
-                  <label className="text-xs text-secondary-600 mb-1 block">
+                  <label className="text-xs mb-1 block" style={{ color: currentTheme.colors.textSecondary }}>
                     Node Spacing: {layoutParams.nodeSpacing}px
                   </label>
                   <input
@@ -157,13 +197,17 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
                       console.log('🔧 onLayoutParamsChange function:', onLayoutParamsChange);
                       onLayoutParamsChange?.({ ...layoutParams, nodeSpacing: newValue });
                     }}
-                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                    className="w-full h-2 rounded-lg appearance-none cursor-pointer"
+                    style={{ 
+                      backgroundColor: currentTheme.colors.border,
+                      accentColor: currentTheme.colors.primary
+                    }}
                   />
                 </div>
                 
                 {/* Level Spacing */}
                 <div>
-                  <label className="text-xs text-secondary-600 mb-1 block">
+                  <label className="text-xs mb-1 block" style={{ color: currentTheme.colors.textSecondary }}>
                     Level Spacing: {layoutParams.levelSpacing}px
                   </label>
                   <input
@@ -177,7 +221,11 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
                       console.log('🔧 Level Spacing changed to:', newValue);
                       onLayoutParamsChange?.({ ...layoutParams, levelSpacing: newValue });
                     }}
-                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                    className="w-full h-2 rounded-lg appearance-none cursor-pointer"
+                    style={{ 
+                      backgroundColor: currentTheme.colors.border,
+                      accentColor: currentTheme.colors.primary
+                    }}
                   />
                 </div>
                 
@@ -186,7 +234,7 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
                 {layoutAlgorithm === 'force' && (
                   <>
                     <div>
-                      <label className="text-xs text-secondary-600 mb-1 block">
+                      <label className="text-xs mb-1 block" style={{ color: currentTheme.colors.textSecondary }}>
                         Iterations: {layoutParams.iterations}
                       </label>
                       <input
@@ -196,11 +244,15 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
                         step="10"
                         value={layoutParams.iterations}
                         onChange={(e) => onLayoutParamsChange?.({ ...layoutParams, iterations: parseInt(e.target.value) })}
-                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                        className="w-full h-2 rounded-lg appearance-none cursor-pointer"
+                    style={{ 
+                      backgroundColor: currentTheme.colors.border,
+                      accentColor: currentTheme.colors.primary
+                    }}
                       />
                     </div>
                     <div>
-                      <label className="text-xs text-secondary-600 mb-1 block">
+                      <label className="text-xs mb-1 block" style={{ color: currentTheme.colors.textSecondary }}>
                         Damping: {layoutParams.damping}
                       </label>
                       <input
@@ -210,116 +262,190 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
                         step="0.1"
                         value={layoutParams.damping}
                         onChange={(e) => onLayoutParamsChange?.({ ...layoutParams, damping: parseFloat(e.target.value) })}
-                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                        className="w-full h-2 rounded-lg appearance-none cursor-pointer"
+                    style={{ 
+                      backgroundColor: currentTheme.colors.border,
+                      accentColor: currentTheme.colors.primary
+                    }}
                       />
                     </div>
                   </>
                 )}
               </div>
-            </div>
-
-            {/* Layout Controls */}
-            <div>
-              <label className="text-sm font-medium text-secondary-700 mb-2 block">
-                Layout Algorithm
-              </label>
-              <div className="grid grid-cols-2 gap-1 mb-3">
-                {(['hierarchical', 'circular', 'grid', 'force', 'flow', 'dag', 'sugiyama', 'manual'] as LayoutAlgorithm[]).map((algo) => (
-                  <button
-                    key={algo}
-                    onClick={() => {
-                      console.log('🔧 ControlPanel: Layout button clicked:', algo);
-                      onLayoutChange?.(algo);
-                    }}
-                    className={`px-2 py-1 text-xs rounded transition-colors cursor-pointer ${
-                      layoutAlgorithm === algo
-                        ? 'bg-blue-500 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                  >
-                    {algo.charAt(0).toUpperCase() + algo.slice(1)}
-                  </button>
-                ))}
               </div>
-              
-              
-              <div className="flex gap-1">
-                <button
-                  onClick={() => {
-                    console.log('🔧 ControlPanel: Re-apply button clicked');
-                    onApplyLayout?.();
-                  }}
-                  className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors cursor-pointer"
-                  title="Re-apply current layout"
-                >
-                  Re-apply
-                </button>
-                <button
-                  onClick={() => {
-                    console.log('🔧 ControlPanel: Fit View button clicked');
-                    onFitView?.();
-                  }}
-                  className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors cursor-pointer"
-                >
-                  Fit View
-                </button>
-                <button
-                  onClick={() => {
-                    console.log('🔧 ControlPanel: Randomize button clicked');
-                    onRandomize?.();
-                  }}
-                  className="px-2 py-1 text-xs bg-purple-100 text-purple-700 rounded hover:bg-purple-200 transition-colors cursor-pointer"
-                >
-                  Randomize
-                </button>
-              </div>
-            </div>
 
-
-            {/* Transform Types - Collapsible Sub-panel */}
-            <div className="pt-4 border-t border-secondary-200">
-              <button
-                onClick={() => setIsTransformTypesExpanded(!isTransformTypesExpanded)}
-                className="flex items-center justify-between w-full text-sm font-medium text-secondary-700 hover:text-secondary-900 transition-colors"
-              >
-                <span>Transform Types</span>
-                {isTransformTypesExpanded ? (
-                  <ChevronUp className="w-4 h-4" />
-                ) : (
-                  <ChevronDown className="w-4 h-4" />
-                )}
-              </button>
-              
-              {isTransformTypesExpanded && (
-                <div className="mt-3 space-y-2">
-                  {[
-                    'SPARK_OPERATION',
-                    'PANDAS_OPERATION',
-                    'SQL_OPERATION',
-                    'AGGREGATION',
-                    'STRING_FUNCTION',
-                    'TYPE_CONVERSION',
-                  ].map((type) => (
-                    <label key={type} className="flex items-center">
-                      <input
-                        type="checkbox"
-                        className="rounded border-secondary-300 text-primary-600 focus:ring-primary-500"
-                        defaultChecked
-                      />
-                      <span className="ml-2 text-sm text-secondary-600">{type}</span>
-                    </label>
+              {/* Layout Controls */}
+              <div>
+                <label className="text-sm font-medium mb-2 block" style={{ color: currentTheme.colors.text }}>
+                  Layout Algorithm
+                </label>
+                <div className="grid grid-cols-2 gap-1 mb-3">
+                  {(['hierarchical', 'circular', 'grid', 'force', 'flow', 'dag', 'sugiyama', 'manual'] as LayoutAlgorithm[]).map((algo) => (
+                    <button
+                      key={algo}
+                      onClick={() => {
+                        console.log('🔧 ControlPanel: Layout button clicked:', algo);
+                        onLayoutChange?.(algo);
+                      }}
+                      className="px-2 py-1 text-xs rounded transition-colors cursor-pointer"
+                      style={{
+                        backgroundColor: layoutAlgorithm === algo ? currentTheme.colors.primary : currentTheme.colors.background,
+                        color: layoutAlgorithm === algo ? currentTheme.colors.text : currentTheme.colors.textSecondary,
+                        border: `1px solid ${currentTheme.colors.border}`
+                      }}
+                      onMouseEnter={(e) => {
+                        if (layoutAlgorithm !== algo) {
+                          e.currentTarget.style.backgroundColor = currentTheme.colors.border;
+                          e.currentTarget.style.color = currentTheme.colors.text;
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (layoutAlgorithm !== algo) {
+                          e.currentTarget.style.backgroundColor = currentTheme.colors.background;
+                          e.currentTarget.style.color = currentTheme.colors.textSecondary;
+                        }
+                      }}
+                    >
+                      {algo.charAt(0).toUpperCase() + algo.slice(1)}
+                    </button>
                   ))}
                 </div>
-              )}
+                
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => {
+                      console.log('🔧 ControlPanel: Re-apply button clicked');
+                      onApplyLayout?.();
+                    }}
+                    className="px-2 py-1 text-xs rounded transition-colors cursor-pointer"
+                    style={{ 
+                      backgroundColor: currentTheme.colors.success, 
+                      color: currentTheme.colors.text,
+                      border: `1px solid ${currentTheme.colors.border}`
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = currentTheme.colors.accent;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = currentTheme.colors.success;
+                    }}
+                    title="Re-apply current layout"
+                  >
+                    Re-apply
+                  </button>
+                  <button
+                    onClick={() => {
+                      console.log('🔧 ControlPanel: Fit View button clicked');
+                      onFitView?.();
+                    }}
+                    className="px-2 py-1 text-xs rounded transition-colors cursor-pointer"
+                    style={{ 
+                      backgroundColor: currentTheme.colors.primary, 
+                      color: currentTheme.colors.text,
+                      border: `1px solid ${currentTheme.colors.border}`
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = currentTheme.colors.accent;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = currentTheme.colors.primary;
+                    }}
+                  >
+                    Fit View
+                  </button>
+                  <button
+                    onClick={() => {
+                      console.log('🔧 ControlPanel: Randomize button clicked');
+                      onRandomize?.();
+                    }}
+                    className="px-2 py-1 text-xs rounded transition-colors cursor-pointer"
+                    style={{ 
+                      backgroundColor: currentTheme.colors.accent, 
+                      color: currentTheme.colors.text,
+                      border: `1px solid ${currentTheme.colors.border}`
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = currentTheme.colors.primary;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = currentTheme.colors.accent;
+                    }}
+                  >
+                    Randomize
+                  </button>
+                </div>
+              </div>
             </div>
+          )}
+
+
+          {/* Transform Types - Collapsible Sub-panel */}
+          <div 
+            className="pt-4 border-t"
+            style={{ borderColor: currentTheme.colors.border }}
+          >
+            <button
+              onClick={() => setIsTransformTypesExpanded(!isTransformTypesExpanded)}
+              className="flex items-center justify-between w-full text-sm font-medium transition-colors"
+              style={{ color: currentTheme.colors.text }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = currentTheme.colors.primary;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = currentTheme.colors.text;
+              }}
+            >
+              <span>Transform Types</span>
+              {isTransformTypesExpanded ? (
+                <ChevronUp className="w-4 h-4" />
+              ) : (
+                <ChevronDown className="w-4 h-4" />
+              )}
+            </button>
+            
+            {isTransformTypesExpanded && (
+              <div className="mt-3 space-y-2">
+                {[
+                  'SPARK_OPERATION',
+                  'PANDAS_OPERATION',
+                  'SQL_OPERATION',
+                  'AGGREGATION',
+                  'STRING_FUNCTION',
+                  'TYPE_CONVERSION',
+                ].map((type) => (
+                  <label key={type} className="flex items-center">
+                    <input
+                      type="checkbox"
+                      className="rounded"
+                      style={{ 
+                        borderColor: currentTheme.colors.border, 
+                        accentColor: currentTheme.colors.primary
+                      }}
+                      defaultChecked
+                    />
+                    <span className="ml-2 text-sm" style={{ color: currentTheme.colors.textSecondary }}>{type}</span>
+                  </label>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       ) : (
         /* Collapsed state - clean minimal view with hover hint */
         <div className="p-2 flex flex-col items-center space-y-3">
-          <div className="w-8 h-8 rounded-full bg-secondary-100 flex items-center justify-center group hover:bg-secondary-200 transition-colors">
-            <Settings className="w-4 h-4 text-secondary-600 group-hover:text-secondary-800" />
+          <div 
+            className="w-8 h-8 rounded-full flex items-center justify-center group transition-colors"
+            style={{ backgroundColor: currentTheme.colors.background }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = currentTheme.colors.border;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = currentTheme.colors.background;
+            }}
+          >
+            <Settings className="w-4 h-4" style={{ color: currentTheme.colors.textSecondary }} />
           </div>
+          <ThemeSelector isCollapsed={true} />
         </div>
       )}
     </div>

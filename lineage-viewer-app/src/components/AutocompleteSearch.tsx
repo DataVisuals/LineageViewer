@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Search, X, Database, Cpu, BarChart3 } from 'lucide-react';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface SearchableItem {
   id: string;
@@ -26,6 +27,7 @@ const AutocompleteSearch: React.FC<AutocompleteSearchProps> = ({
   placeholder = "Search datasets, jobs, or columns...",
   className = ""
 }) => {
+  const { currentTheme } = useTheme();
   const [query, setQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
@@ -207,22 +209,22 @@ const AutocompleteSearch: React.FC<AutocompleteSearchProps> = ({
   const getItemIcon = (type: string) => {
     switch (type) {
       case 'dataset':
-        return <Database className="w-4 h-4 text-blue-500" />;
+        return <Database className="w-4 h-4" style={{ color: currentTheme.colors.primary }} />;
       case 'job':
-        return <Cpu className="w-4 h-4 text-green-500" />;
+        return <Cpu className="w-4 h-4" style={{ color: currentTheme.colors.success }} />;
       case 'transform':
-        return <BarChart3 className="w-4 h-4 text-purple-500" />;
+        return <BarChart3 className="w-4 h-4" style={{ color: currentTheme.colors.accent }} />;
       case 'column':
-        return <div className="w-4 h-4 rounded-full bg-gray-400" />;
+        return <div className="w-4 h-4 rounded-full" style={{ backgroundColor: currentTheme.colors.textSecondary }} />;
       default:
-        return <Search className="w-4 h-4 text-gray-400" />;
+        return <Search className="w-4 h-4" style={{ color: currentTheme.colors.textSecondary }} />;
     }
   };
 
   return (
     <div className={`relative ${className}`}>
       <form onSubmit={handleSubmit} className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-secondary-400" />
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4" style={{ color: currentTheme.colors.textSecondary }} />
         <input
           ref={inputRef}
           type="text"
@@ -230,14 +232,35 @@ const AutocompleteSearch: React.FC<AutocompleteSearchProps> = ({
           value={query}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
-          onFocus={() => query.length > 0 && setIsOpen(true)}
-          className="w-full pl-10 pr-10 py-2 border border-secondary-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+          className="w-full pl-10 pr-10 py-2 rounded-md"
+          style={{
+            backgroundColor: currentTheme.colors.background,
+            border: `1px solid ${currentTheme.colors.border}`,
+            color: currentTheme.colors.text,
+            outline: 'none'
+          }}
+          onFocus={(e) => {
+            if (query.length > 0) setIsOpen(true);
+            e.target.style.borderColor = currentTheme.colors.primary;
+            e.target.style.boxShadow = `0 0 0 2px ${currentTheme.colors.primary}20`;
+          }}
+          onBlur={(e) => {
+            e.target.style.borderColor = currentTheme.colors.border;
+            e.target.style.boxShadow = 'none';
+          }}
         />
         {query && (
           <button
             type="button"
             onClick={handleClear}
-            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-secondary-400 hover:text-secondary-600"
+            className="absolute right-3 top-1/2 transform -translate-y-1/2"
+            style={{ color: currentTheme.colors.textSecondary }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = currentTheme.colors.text;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = currentTheme.colors.textSecondary;
+            }}
           >
             <X className="w-4 h-4" />
           </button>
@@ -248,17 +271,33 @@ const AutocompleteSearch: React.FC<AutocompleteSearchProps> = ({
       {isOpen && filteredItems.length > 0 && (
         <div
           ref={dropdownRef}
-          className="absolute z-50 w-full mt-1 bg-white border border-secondary-200 rounded-md shadow-lg max-h-60 overflow-y-auto"
+          className="absolute z-50 w-full mt-1 rounded-md shadow-lg max-h-60 overflow-y-auto"
+          style={{
+            backgroundColor: currentTheme.colors.surface,
+            border: `1px solid ${currentTheme.colors.border}`
+          }}
         >
           {filteredItems.map((item, index) => (
             <div
               key={item.id}
               onClick={() => handleItemSelect(item)}
-              className={`flex items-center gap-3 px-3 py-2 cursor-pointer transition-colors ${
-                index === selectedIndex
-                  ? 'bg-primary-50 text-primary-700'
-                  : 'hover:bg-secondary-50 text-secondary-700'
-              }`}
+              className="flex items-center gap-3 px-3 py-2 cursor-pointer transition-colors"
+              style={{
+                backgroundColor: index === selectedIndex ? currentTheme.colors.primary : 'transparent',
+                color: index === selectedIndex ? currentTheme.colors.text : currentTheme.colors.textSecondary
+              }}
+              onMouseEnter={(e) => {
+                if (index !== selectedIndex) {
+                  e.currentTarget.style.backgroundColor = currentTheme.colors.border;
+                  e.currentTarget.style.color = currentTheme.colors.text;
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (index !== selectedIndex) {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                  e.currentTarget.style.color = currentTheme.colors.textSecondary;
+                }
+              }}
             >
               {getItemIcon(item.type)}
               <div className="flex-1 min-w-0">
@@ -266,17 +305,17 @@ const AutocompleteSearch: React.FC<AutocompleteSearchProps> = ({
                   {item.name}
                 </div>
                 {item.fullName && item.fullName !== item.name && (
-                  <div className="text-xs text-secondary-500 truncate">
+                  <div className="text-xs truncate" style={{ color: currentTheme.colors.textSecondary }}>
                     {item.fullName}
                   </div>
                 )}
                 {item.description && (
-                  <div className="text-xs text-secondary-400 truncate">
+                  <div className="text-xs truncate" style={{ color: currentTheme.colors.textSecondary }}>
                     {item.description}
                   </div>
                 )}
               </div>
-              <div className="text-xs text-secondary-400 capitalize">
+              <div className="text-xs capitalize" style={{ color: currentTheme.colors.textSecondary }}>
                 {item.type}
               </div>
             </div>
@@ -286,7 +325,14 @@ const AutocompleteSearch: React.FC<AutocompleteSearchProps> = ({
 
       {/* No results */}
       {isOpen && query.length > 0 && filteredItems.length === 0 && (
-        <div className="absolute z-50 w-full mt-1 bg-white border border-secondary-200 rounded-md shadow-lg p-3 text-center text-secondary-500 text-sm">
+        <div 
+          className="absolute z-50 w-full mt-1 rounded-md shadow-lg p-3 text-center text-sm"
+          style={{
+            backgroundColor: currentTheme.colors.surface,
+            border: `1px solid ${currentTheme.colors.border}`,
+            color: currentTheme.colors.textSecondary
+          }}
+        >
           No results found for "{query}"
         </div>
       )}

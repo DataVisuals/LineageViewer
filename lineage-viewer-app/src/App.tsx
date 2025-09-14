@@ -3,10 +3,10 @@ import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-quer
 import { Workflow, Database } from 'lucide-react';
 import CytoscapeLineageGraph from './components/CytoscapeLineageGraph';
 import ControlPanel from './components/ControlPanel';
-import ColumnTracer from './components/ColumnTracer';
 import DataBrowser from './components/DataBrowser';
 import { marquezApi } from './services/marquezApi';
-import { ViewMode, ColumnTransform } from './types/lineage';
+import { ViewMode } from './types/lineage';
+import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 
 // Debug: Check what's being imported
 console.log('🔧 App.tsx - marquezApi imported:', marquezApi);
@@ -14,11 +14,11 @@ console.log('🔧 App.tsx - marquezApi imported:', marquezApi);
 const queryClient = new QueryClient();
 
 const AppContent: React.FC = () => {
+  const { currentTheme } = useTheme();
   const [viewMode, setViewMode] = useState<ViewMode>({
     showColumns: true,
     showTransforms: true,
   });
-  const [selectedColumn, setSelectedColumn] = useState<ColumnTransform | undefined>();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'graph' | 'browser'>('graph');
   const [layoutAlgorithm, setLayoutAlgorithm] = useState<'hierarchical' | 'circular' | 'grid' | 'force' | 'flow' | 'dag' | 'sugiyama' | 'manual'>('dag');
@@ -154,17 +154,7 @@ const AppContent: React.FC = () => {
   }, [graph, searchQuery]);
 
   const handleNodeClick = (nodeId: string) => {
-    // Find the column if it's a column-level click
-    if (nodeId.includes('.')) {
-      const [datasetId, columnName] = nodeId.split('.');
-      const node = graph?.nodes?.find((n: any) => n.id === datasetId);
-      if (node && node.data.type === 'dataset') {
-        const column = (node.data.data as any).columns?.find((c: any) => c.name === columnName);
-        if (column) {
-          setSelectedColumn(column);
-        }
-      }
-    }
+    console.log('Node clicked:', nodeId);
   };
 
   const handleLayoutChange = (algorithm: typeof layoutAlgorithm) => {
@@ -189,10 +179,10 @@ const AppContent: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-secondary-50 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: currentTheme.colors.background }}>
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-          <p className="text-secondary-600">Loading lineage data...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4" style={{ borderColor: currentTheme.colors.primary }}></div>
+          <p style={{ color: currentTheme.colors.textSecondary }}>Loading lineage data...</p>
         </div>
       </div>
     );
@@ -200,12 +190,12 @@ const AppContent: React.FC = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-secondary-50 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: currentTheme.colors.background }}>
         <div className="text-center">
-          <div className="text-red-500 mb-4">
+          <div className="mb-4" style={{ color: currentTheme.colors.error }}>
             <Database className="w-12 h-12 mx-auto mb-2" />
-            <p className="text-lg font-semibold">Failed to load lineage data</p>
-            <p className="text-sm text-secondary-600 mt-2">
+            <p className="text-lg font-semibold" style={{ color: currentTheme.colors.text }}>Failed to load lineage data</p>
+            <p className="text-sm mt-2" style={{ color: currentTheme.colors.textSecondary }}>
               Make sure Marquez is running on http://localhost:8080
             </p>
           </div>
@@ -215,30 +205,61 @@ const AppContent: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-secondary-50">
+    <div className="min-h-screen" style={{ backgroundColor: currentTheme.colors.background }}>
       {/* Compact Header */}
-      <header className="bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-800 text-white shadow-lg">
+      <header 
+        className="shadow-lg"
+        style={{ 
+          backgroundColor: currentTheme.colors.surface,
+          borderBottom: `1px solid ${currentTheme.colors.border}`
+        }}
+      >
         <div className="px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Left side - Logo and Title */}
             <div className="flex items-center gap-3">
-              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-2">
-                <Workflow className="w-6 h-6 text-white" />
+              <div 
+                className="rounded-lg p-2"
+                style={{ 
+                  backgroundColor: currentTheme.colors.background,
+                  border: `1px solid ${currentTheme.colors.border}`
+                }}
+              >
+                <Workflow 
+                  className="w-6 h-6" 
+                  style={{ 
+                    color: currentTheme.colors.primary,
+                    strokeWidth: 2
+                  }} 
+                />
               </div>
               <div>
-                <h1 className="text-lg font-bold text-white">Data Lineage Viewer</h1>
-                <p className="text-blue-100 text-xs">OpenLineage-powered visualization</p>
+                <h1 className="text-lg font-bold" style={{ color: currentTheme.colors.text }}>Data Lineage Viewer</h1>
+                <p className="text-xs" style={{ color: currentTheme.colors.textSecondary }}>OpenLineage-powered visualization</p>
               </div>
             </div>
             
             {/* Right side - Search and Stats */}
             <div className="flex items-center gap-4">
               {searchQuery && (
-                <div className="flex items-center gap-2 text-xs text-white bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full">
+                <div 
+                  className="flex items-center gap-2 text-xs px-3 py-1 rounded-full"
+                  style={{ 
+                    backgroundColor: currentTheme.colors.background,
+                    border: `1px solid ${currentTheme.colors.border}`,
+                    color: currentTheme.colors.text
+                  }}
+                >
                   <span>Search: "{searchQuery}"</span>
                   <button
                     onClick={() => setSearchQuery('')}
-                    className="text-white/80 hover:text-white"
+                    style={{ color: currentTheme.colors.textSecondary }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.color = currentTheme.colors.text;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.color = currentTheme.colors.textSecondary;
+                    }}
                   >
                     ×
                   </button>
@@ -253,7 +274,7 @@ const AppContent: React.FC = () => {
       {/* Main Content */}
       <div className="flex h-[calc(100vh-4rem)]">
         {/* Control Panel */}
-        <div className="bg-white border-r border-secondary-200 overflow-y-auto">
+        <div className="border-r overflow-y-auto" style={{ backgroundColor: currentTheme.colors.surface, borderColor: currentTheme.colors.border }}>
           <ControlPanel
             viewMode={viewMode}
             onViewModeChange={handleViewModeChange}
@@ -269,32 +290,53 @@ const AppContent: React.FC = () => {
             onEdgeLengthChange={handleEdgeLengthChange}
             layoutParams={layoutParams}
             onLayoutParamsChange={handleLayoutParamsChange}
+            activeTab={activeTab}
           />
         </div>
 
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col">
           {/* Tab Navigation */}
-          <div className="bg-white border-b border-secondary-200">
+          <div className="border-b" style={{ backgroundColor: currentTheme.colors.surface, borderColor: currentTheme.colors.border }}>
             <div className="flex">
               <button
                 onClick={() => setActiveTab('graph')}
-                className={`px-4 py-2 text-sm font-medium border-b-2 ${
-                  activeTab === 'graph'
-                    ? 'border-primary-600 text-primary-600'
-                    : 'border-transparent text-secondary-600 hover:text-secondary-900'
-                }`}
+                className={`px-4 py-2 text-sm font-medium border-b-2`}
+                style={{
+                  borderBottomColor: activeTab === 'graph' ? currentTheme.colors.primary : 'transparent',
+                  color: activeTab === 'graph' ? currentTheme.colors.primary : currentTheme.colors.textSecondary
+                }}
+                onMouseEnter={(e) => {
+                  if (activeTab !== 'graph') {
+                    e.currentTarget.style.color = currentTheme.colors.text;
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (activeTab !== 'graph') {
+                    e.currentTarget.style.color = currentTheme.colors.textSecondary;
+                  }
+                }}
               >
                 <Workflow className="w-4 h-4 inline mr-2" />
                 Lineage Graph
               </button>
               <button
                 onClick={() => setActiveTab('browser')}
-                className={`px-4 py-2 text-sm font-medium border-b-2 ${
-                  activeTab === 'browser'
-                    ? 'border-primary-600 text-primary-600'
-                    : 'border-transparent text-secondary-600 hover:text-secondary-900'
-                }`}
+                className={`px-4 py-2 text-sm font-medium border-b-2`}
+                style={{
+                  borderBottomColor: activeTab === 'browser' ? currentTheme.colors.primary : 'transparent',
+                  color: activeTab === 'browser' ? currentTheme.colors.primary : currentTheme.colors.textSecondary
+                }}
+                onMouseEnter={(e) => {
+                  if (activeTab !== 'browser') {
+                    e.currentTarget.style.color = currentTheme.colors.text;
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (activeTab !== 'browser') {
+                    e.currentTarget.style.color = currentTheme.colors.textSecondary;
+                  }
+                }}
               >
                 <Database className="w-4 h-4 inline mr-2" />
                 Data Browser
@@ -330,14 +372,21 @@ const AppContent: React.FC = () => {
             {searchQuery && highlightedGraph && (!highlightedGraph.nodes || highlightedGraph.nodes.length === 0) && (
               <div className="flex items-center justify-center h-full">
                 <div className="text-center">
-                  <Database className="w-12 h-12 mx-auto mb-4 text-secondary-400" />
-                  <p className="text-lg font-semibold text-secondary-600">No results found</p>
-                  <p className="text-sm text-secondary-500 mt-2">
+                  <Database className="w-12 h-12 mx-auto mb-4" style={{ color: currentTheme.colors.textSecondary }} />
+                  <p className="text-lg font-semibold" style={{ color: currentTheme.colors.text }}>No results found</p>
+                  <p className="text-sm mt-2" style={{ color: currentTheme.colors.textSecondary }}>
                     No datasets, jobs, or transforms match "{searchQuery}"
                   </p>
                   <button
                     onClick={() => setSearchQuery('')}
-                    className="mt-4 px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors"
+                    className="mt-4 px-4 py-2 rounded-md transition-colors"
+                    style={{ backgroundColor: currentTheme.colors.primary, color: currentTheme.colors.text }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = currentTheme.colors.accent;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = currentTheme.colors.primary;
+                    }}
                   >
                     Clear Search
                   </button>
@@ -347,16 +396,16 @@ const AppContent: React.FC = () => {
             {activeTab === 'browser' && !graph && (
               <div className="flex items-center justify-center h-full">
                 <div className="text-center">
-                  <Database className="w-12 h-12 text-secondary-400 mx-auto mb-4" />
-                  <p className="text-secondary-600">Loading data...</p>
+                  <Database className="w-12 h-12 mx-auto mb-4" style={{ color: currentTheme.colors.textSecondary }} />
+                  <p style={{ color: currentTheme.colors.textSecondary }}>Loading data...</p>
                 </div>
               </div>
             )}
             {activeTab === 'graph' && (!graph || !graph.nodes || !graph.edges) && (
               <div className="flex items-center justify-center h-full">
                 <div className="text-center">
-                  <Workflow className="w-12 h-12 text-secondary-400 mx-auto mb-4" />
-                  <p className="text-secondary-600">No graph data available</p>
+                  <Workflow className="w-12 h-12 mx-auto mb-4" style={{ color: currentTheme.colors.textSecondary }} />
+                  <p style={{ color: currentTheme.colors.textSecondary }}>No graph data available</p>
                 </div>
               </div>
             )}
@@ -364,22 +413,17 @@ const AppContent: React.FC = () => {
         </div>
       </div>
 
-      {/* Column Tracer Modal */}
-      {selectedColumn && (
-        <ColumnTracer
-          selectedColumn={selectedColumn}
-          onClose={() => setSelectedColumn(undefined)}
-        />
-      )}
     </div>
   );
 };
 
 const App: React.FC = () => {
   return (
-    <QueryClientProvider client={queryClient}>
-      <AppContent />
-    </QueryClientProvider>
+    <ThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <AppContent />
+      </QueryClientProvider>
+    </ThemeProvider>
   );
 };
 

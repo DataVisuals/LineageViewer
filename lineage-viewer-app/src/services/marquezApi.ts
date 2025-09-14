@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Dataset, Job, LineageGraph, LineageNode, LineageEdge, ColumnTransform } from '../types/lineage';
+import { Dataset, Job, LineageGraph, LineageNode, LineageEdge } from '../types/lineage';
 
 const MARQUEZ_API_URL = 'http://localhost:3005/api/v1';
 const NAMESPACE = 'data_pipeline';
@@ -97,15 +97,7 @@ export class MarquezApiService {
             const details = detailResponse.data;
             console.log(`📊 DETAILED DATASET ${dataset.name} RESPONSE:`, JSON.stringify(details, null, 2));
             
-            const columns = details.facets?.columnLineage?.fields ? 
-              Object.entries(details.facets.columnLineage.fields).map(([name, transform]: [string, any]) => ({
-                id: `${dataset.name}.${name}`,
-                name,
-                transformType: transform.transformationType || 'UNKNOWN',
-                transform: transform.transformation || '',
-                description: transform.transformationDescription || '',
-                inputFields: transform.inputFields || [],
-              })) : [];
+            const columns: any[] = [];
 
             return {
               id: `${dataset.namespace}.${dataset.name}`,
@@ -116,7 +108,6 @@ export class MarquezApiService {
               description: dataset.description || details.description,
               tags: dataset.tags || [],
               fields: details.facets?.schema?.fields || dataset.fields || [],
-              columnLineage: details.columnLineage || dataset.columnLineage || [],
               facets: details.facets, // Add this line to store the facets data
             };
           } catch (error) {
@@ -126,11 +117,10 @@ export class MarquezApiService {
               name: dataset.name,
               namespace: dataset.namespace,
               type: dataset.type,
-              columns: [],
+              columns: [] as any[],
               description: dataset.description,
               tags: dataset.tags || [],
               fields: dataset.fields || [],
-              columnLineage: dataset.columnLineage || [],
               facets: dataset.facets || {}, // Add this line to store the facets data
             };
           }
@@ -179,7 +169,6 @@ export class MarquezApiService {
             { name: 'total_orders', type: 'integer' },
             { name: 'avg_order_value', type: 'decimal' }
           ],
-          columnLineage: [],
           facets: {
             dbt: {
               projectName: 'data_pipeline',
@@ -218,7 +207,6 @@ export class MarquezApiService {
             { name: 'processed_amount', type: 'decimal' },
             { name: 'category', type: 'string' }
           ],
-          columnLineage: [],
           facets: {
             dbt: {
               projectName: 'data_pipeline',
@@ -269,141 +257,24 @@ export class MarquezApiService {
     // Don't create field-level nodes - transform data will be included in job hovers instead
 
     // Extract all transforms from datasets
-    const transforms: ColumnTransform[] = [];
-    datasets.forEach(dataset => {
-      // Extract transforms from columnLineage facets
-      if (dataset.facets?.columnLineage?.fields) {
-        console.log(`🔧 Processing dataset ${dataset.name} with fields:`, Object.keys(dataset.facets.columnLineage.fields));
-        Object.entries(dataset.facets.columnLineage.fields).forEach(([fieldName, fieldData]: [string, any]) => {
-          console.log(`🔧 Field ${fieldName}:`, fieldData);
-          console.log(`🔧 Transformation:`, fieldData.transformation);
-          console.log(`🔧 Transformation Type:`, fieldData.transformationType);
-          console.log(`🔧 All field data keys:`, Object.keys(fieldData));
-          
-          if (fieldData.transformation) {
-            transforms.push({
-              id: `${dataset.name}_${fieldName}_transform`,
-              name: `${fieldName} transform`,
-              transformType: fieldData.transformationType || 'TRANSFORM',
-              transform: fieldData.transformation,
-              description: fieldData.transformationDescription,
-              inputFields: fieldData.inputFields || [],
-              outputField: fieldName,
-              dataset: dataset.name,
-              // Add SQL and other code fields if they exist
-              sql: fieldData.sql,
-              pythonCode: fieldData.pythonCode,
-              sparkCode: fieldData.sparkCode,
-              sourceCode: fieldData.sourceCode,
-              sourceFile: fieldData.sourceFile,
-              language: fieldData.language
-            });
-          }
-        });
-      }
-    });
+    const transforms: any[] = [];
+    // No column lineage processing needed
 
-    // Add DBT-based transformations (simulated data for demonstration)
-    // In a real implementation, this would extract from actual DBT files
-    const dbtTransforms: ColumnTransform[] = [
-      {
-        id: 'dbt_customer_aggregation_customer_id',
-        name: 'customer_id transform',
-        transformType: 'DBT_TRANSFORM',
-        transform: 'customer_id',
-        description: 'dbt transform in customer_aggregation',
-        inputFields: [{ namespace: 'data_pipeline', name: 'raw_customers', field: 'id' }],
-        outputField: 'customer_id',
-        dataset: 'customer_aggregation',
-        sql: 'SELECT id as customer_id FROM raw_customers',
-        language: 'dbt',
-        sourceFile: 'models/marts/customer_aggregation.sql'
-      },
-      {
-        id: 'dbt_customer_aggregation_total_orders',
-        name: 'total_orders transform',
-        transformType: 'DBT_TRANSFORM',
-        transform: 'COUNT(orders.id) as total_orders',
-        description: 'dbt transform in customer_aggregation',
-        inputFields: [{ namespace: 'data_pipeline', name: 'raw_orders', field: 'id' }],
-        outputField: 'total_orders',
-        dataset: 'customer_aggregation',
-        sql: 'SELECT COUNT(orders.id) as total_orders FROM raw_orders orders',
-        language: 'dbt',
-        sourceFile: 'models/marts/customer_aggregation.sql'
-      },
-      {
-        id: 'dbt_customer_aggregation_avg_order_value',
-        name: 'avg_order_value transform',
-        transformType: 'DBT_TRANSFORM',
-        transform: 'AVG(orders.amount) as avg_order_value',
-        description: 'dbt transform in customer_aggregation',
-        inputFields: [{ namespace: 'data_pipeline', name: 'raw_orders', field: 'amount' }],
-        outputField: 'avg_order_value',
-        dataset: 'customer_aggregation',
-        sql: 'SELECT AVG(orders.amount) as avg_order_value FROM raw_orders orders',
-        language: 'dbt',
-        sourceFile: 'models/marts/customer_aggregation.sql'
-      },
-      {
-        id: 'dbt_data_transformer_processed_amount',
-        name: 'processed_amount transform',
-        transformType: 'DBT_TRANSFORM',
-        transform: 'ROUND(amount * 1.1, 2) as processed_amount',
-        description: 'dbt transform in data_transformer',
-        inputFields: [{ namespace: 'data_pipeline', name: 'raw_transactions', field: 'amount' }],
-        outputField: 'processed_amount',
-        dataset: 'processed_data',
-        sql: 'SELECT ROUND(amount * 1.1, 2) as processed_amount FROM raw_transactions',
-        language: 'dbt',
-        sourceFile: 'models/staging/data_transformer.sql'
-      },
-      {
-        id: 'dbt_data_transformer_category',
-        name: 'category transform',
-        transformType: 'DBT_TRANSFORM',
-        transform: 'UPPER(category) as category',
-        description: 'dbt transform in data_transformer',
-        inputFields: [{ namespace: 'data_pipeline', name: 'raw_transactions', field: 'category' }],
-        outputField: 'category',
-        dataset: 'processed_data',
-        sql: 'SELECT UPPER(category) as category FROM raw_transactions',
-        language: 'dbt',
-        sourceFile: 'models/staging/data_transformer.sql'
-      }
-    ];
-
-    // Add DBT transforms to the main transforms array
-    transforms.push(...dbtTransforms);
-    console.log('🔧 Added DBT transforms:', dbtTransforms.length);
-
-    // Add job nodes with their associated transforms
+    // Add job nodes
     jobs.forEach((job, index) => {
-      // Find transforms for this job (transforms that belong to this job's output datasets)
-      const jobTransforms = transforms.filter(transform => 
-        job.outputs.some(output => transform.dataset === output)
-      );
-      
-      // Add transforms to the job
-      const jobWithTransforms = {
-        ...job,
-        transforms: jobTransforms
-      };
-      
       nodes.push({
         id: job.id,
         type: 'lineageNode',
         data: {
           type: 'job',
-          data: jobWithTransforms,
+          data: job,
         },
         position: { x: index * 300, y: 300 },
         draggable: true,
       });
     });
 
-    // Don't create individual transform nodes - they'll be shown within job nodes instead
-    console.log('🔧 Transforms will be shown within job nodes:', transforms.length);
+    // No transform nodes needed
 
     // Create table-level edges
     jobs.forEach(job => {
@@ -432,9 +303,7 @@ export class MarquezApiService {
       });
     });
 
-    // Don't create column-level edges - transforms are shown within job hovers instead
-
-    // No transform-to-dataset edges needed since transforms are shown within job nodes
+    // No column-level edges needed
 
     console.log('🎯 Final graph:', { nodes: nodes.length, edges: edges.length, transforms: transforms.length });
     console.log('📋 Node IDs:', nodes.map(n => n.id));
@@ -444,11 +313,6 @@ export class MarquezApiService {
     return { nodes, edges, jobs, datasets, transforms };
   }
 
-  async traceColumnLineage(columnId: string): Promise<string[]> {
-    // This would implement column-level tracing logic
-    // For now, return a simple path
-    return [columnId];
-  }
 }
 
 export const marquezApi = new MarquezApiService();
