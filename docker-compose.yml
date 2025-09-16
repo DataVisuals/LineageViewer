@@ -1,0 +1,42 @@
+services:
+  # React App Service
+  lineage-viewer:
+    build:
+      context: ./lineage-viewer-app
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - REACT_APP_API_URL=http://host.docker.internal:3005
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+  # Optional: Marquez Database (if you want to include it)
+  # marquez-db:
+  #   image: postgres:13
+  #   environment:
+  #     POSTGRES_DB: marquez
+  #     POSTGRES_USER: marquez
+  #     POSTGRES_PASSWORD: marquez
+  #   volumes:
+  #     - marquez-db-data:/var/lib/postgresql/data
+  #   ports:
+  #     - "5432:5432"
+  #   restart: unless-stopped
+
+  # Optional: Marquez Web Service (if you want to include it)
+  # marquez-web:
+  #   image: marquezproject/marquez-web:latest
+  #   ports:
+  #     - "3004:3004"
+  #   environment:
+  #     - MARQUEZ_HOST=marquez-api
+  #     - MARQUEZ_PORT=8080
+  #   depends_on:
+  #     - marquez-api
+  #   restart: unless-stopped
+
+# volumes:
+#   marquez-db-data:

@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useCallback, useMemo, useState } from 'react'
 import cytoscape from 'cytoscape';
 import { LineageGraph as LineageGraphType, ViewMode, LayoutAlgorithm } from '../types/lineage';
 import { useTheme } from '../contexts/ThemeContext';
-import FileViewer from './FileViewer';
 
 // Import and register dagre extension
 const dagre = require('cytoscape-dagre');
@@ -36,49 +35,6 @@ const CytoscapeLineageGraph: React.FC<CytoscapeLineageGraphProps> = ({
   const cyRef = useRef<cytoscape.Core | null>(null);
   const { currentTheme } = useTheme();
   
-  // File viewer state
-  const [fileViewer, setFileViewer] = useState<{
-    isOpen: boolean;
-    fileName: string;
-    fileContent: string;
-    language: string;
-    filePath?: string;
-  }>({
-    isOpen: false,
-    fileName: '',
-    fileContent: '',
-    language: 'text'
-  });
-
-  // Function to detect and handle file content
-  const handleFileClick = (fileContent: string, fileName: string, language: string = 'text', filePath?: string) => {
-    setFileViewer({
-      isOpen: true,
-      fileName,
-      fileContent,
-      language,
-      filePath
-    });
-  };
-
-  // Function to close file viewer
-  const closeFileViewer = () => {
-    setFileViewer(prev => ({ ...prev, isOpen: false }));
-  };
-
-  // Handle ESC key to close file viewer
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && fileViewer.isOpen) {
-        closeFileViewer();
-      }
-    };
-
-    if (fileViewer.isOpen) {
-      document.addEventListener('keydown', handleKeyDown);
-      return () => document.removeEventListener('keydown', handleKeyDown);
-    }
-  }, [fileViewer.isOpen]);
 
   // Convert graph data to Cytoscape format
   const cytoscapeData = useMemo(() => {
@@ -430,8 +386,6 @@ const CytoscapeLineageGraph: React.FC<CytoscapeLineageGraphProps> = ({
           }
         }
         
-        // Show column lineage information if available
-        
         content += `</div>`;
       }
       
@@ -498,10 +452,7 @@ Note: This is a reference to the source file. The actual file content is not ava
 ## Related Code:
 ${jobData.facets?.sourceCode?.source || 'No source code available in metadata'}`;
           
-          // Store content in a data attribute to avoid escaping issues
-          const contentId = `source-${Math.random().toString(36).substr(2, 9)}`;
-          (window as any)[contentId] = sourceFileContent;
-          content += `<div style="margin-bottom: 4px; color: #9ca3af; font-size: 11px;"><strong>Source File:</strong> <span style="color: #60a5fa; cursor: pointer; text-decoration: underline;" onclick="window.openFileViewer('${sourceFileName}', window['${contentId}'], 'markdown', '${sourceFileName}')">${sourceFileName}</span></div>`;
+          content += `<div style="margin-bottom: 4px; color: #9ca3af; font-size: 11px;"><strong>Source File:</strong> ${sourceFileName}</div>`;
         }
         
         if (jobData?.owner) {
@@ -522,9 +473,7 @@ ${jobData.facets?.sourceCode?.source || 'No source code available in metadata'}`
           if (code && language !== 'python') {
             content += `<div style="margin-top: 8px; color: #9ca3af; font-size: 11px;"><strong>${language.toUpperCase()} Code:</strong></div>`;
             const codePreview = code.length > 300 ? code.substring(0, 300) + '...' : code;
-            const codeId = `code-${Math.random().toString(36).substr(2, 9)}`;
-            (window as any)[codeId] = code;
-            content += `<div style="margin-top: 4px; color: #e5e7eb; font-size: 9px; font-family: monospace; background: #374151; padding: 6px; border-radius: 4px; white-space: pre-wrap; border-left: 3px solid #3b82f6; cursor: pointer;" onclick="window.openFileViewer('${language}.${Math.random().toString(36).substr(2, 9)}', window['${codeId}'], '${language}', '${jobData.sourceFile || 'code'}')">${codePreview}</div>`;
+            content += `<div style="margin-top: 4px; color: #e5e7eb; font-size: 9px; font-family: monospace; background: #374151; padding: 6px; border-radius: 4px; white-space: pre-wrap; border-left: 3px solid #3b82f6;">${codePreview}</div>`;
           }
         }
         
@@ -536,9 +485,7 @@ ${jobData.facets?.sourceCode?.source || 'No source code available in metadata'}`
           if (sqlCode) {
             content += `<div style="margin-top: 8px; color: #9ca3af; font-size: 11px;"><strong>SQL:</strong></div>`;
             const sqlPreview = sqlCode.length > 300 ? sqlCode.substring(0, 300) + '...' : sqlCode;
-            const sqlId = `sql-${Math.random().toString(36).substr(2, 9)}`;
-            (window as any)[sqlId] = sqlCode;
-            content += `<div style="margin-top: 4px; color: #e5e7eb; font-size: 9px; font-family: monospace; background: #374151; padding: 6px; border-radius: 4px; white-space: pre-wrap; border-left: 3px solid #10b981; cursor: pointer;" onclick="window.openFileViewer('${jobData.name || 'query'}.sql', window['${sqlId}'], 'sql', '${jobData.sourceFile || 'query.sql'}')">${sqlPreview}</div>`;
+            content += `<div style="margin-top: 4px; color: #e5e7eb; font-size: 9px; font-family: monospace; background: #374151; padding: 6px; border-radius: 4px; white-space: pre-wrap; border-left: 3px solid #10b981;">${sqlPreview}</div>`;
           }
         }
         
@@ -550,9 +497,7 @@ ${jobData.facets?.sourceCode?.source || 'No source code available in metadata'}`
           if (code) {
             content += `<div style="margin-top: 8px; color: #9ca3af; font-size: 11px;"><strong>Python Code:</strong></div>`;
             const codePreview = code.length > 300 ? code.substring(0, 300) + '...' : code;
-            const pythonId = `python-${Math.random().toString(36).substr(2, 9)}`;
-            (window as any)[pythonId] = code;
-            content += `<div style="margin-top: 4px; color: #e5e7eb; font-size: 9px; font-family: monospace; background: #374151; padding: 6px; border-radius: 4px; white-space: pre-wrap; border-left: 3px solid #f59e0b; cursor: pointer;" onclick="window.openFileViewer('${jobData.name || 'script'}.py', window['${pythonId}'], 'python', '${jobData.sourceFile || 'script.py'}')">${codePreview}</div>`;
+            content += `<div style="margin-top: 4px; color: #e5e7eb; font-size: 9px; font-family: monospace; background: #374151; padding: 6px; border-radius: 4px; white-space: pre-wrap; border-left: 3px solid #f59e0b;">${codePreview}</div>`;
           }
         } else if (jobData?.facets && jobData.facets.sourceCode && jobData.facets.sourceCode.language === 'python') {
           const pythonCode = jobData.facets.sourceCode;
@@ -561,9 +506,7 @@ ${jobData.facets?.sourceCode?.source || 'No source code available in metadata'}`
           if (code) {
             content += `<div style="margin-top: 8px; color: #9ca3af; font-size: 11px;"><strong>Python Code:</strong></div>`;
             const codePreview = code.length > 300 ? code.substring(0, 300) + '...' : code;
-            const pythonId = `python-${Math.random().toString(36).substr(2, 9)}`;
-            (window as any)[pythonId] = code;
-            content += `<div style="margin-top: 4px; color: #e5e7eb; font-size: 9px; font-family: monospace; background: #374151; padding: 6px; border-radius: 4px; white-space: pre-wrap; border-left: 3px solid #f59e0b; cursor: pointer;" onclick="window.openFileViewer('${jobData.name || 'script'}.py', window['${pythonId}'], 'python', '${jobData.sourceFile || 'script.py'}')">${codePreview}</div>`;
+            content += `<div style="margin-top: 4px; color: #e5e7eb; font-size: 9px; font-family: monospace; background: #374151; padding: 6px; border-radius: 4px; white-space: pre-wrap; border-left: 3px solid #f59e0b;">${codePreview}</div>`;
           }
         }
         
@@ -635,10 +578,6 @@ ${jobData.facets?.sourceCode?.source || 'No source code available in metadata'}`
         content += `</div>`;
       }
 
-        // Add global function for file opening
-        (window as any).openFileViewer = (fileName: string, fileContent: string, language: string, filePath?: string) => {
-          handleFileClick(fileContent, fileName, language, filePath);
-        };
 
         tooltipRef.current.innerHTML = content;
         document.body.appendChild(tooltipRef.current);
@@ -1048,14 +987,6 @@ ${jobData.facets?.sourceCode?.source || 'No source code available in metadata'}`
           border: `1px solid ${currentTheme.colors.border}`,
           borderRadius: '8px',
         }}
-      />
-      <FileViewer
-        isOpen={fileViewer.isOpen}
-        onClose={closeFileViewer}
-        fileName={fileViewer.fileName}
-        fileContent={fileViewer.fileContent}
-        language={fileViewer.language}
-        filePath={fileViewer.filePath}
       />
     </div>
   );

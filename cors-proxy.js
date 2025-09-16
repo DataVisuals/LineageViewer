@@ -16,9 +16,10 @@ app.use((req, res, next) => {
   }
 });
 
-// Create proxy middleware
+// Create proxy middleware - use localhost for host, host.docker.internal for Docker containers
+const marquezUrl = process.env.MARQUEZ_URL || 'http://localhost:3004';
 const proxy = createProxyMiddleware({
-  target: 'http://localhost:3004',
+  target: marquezUrl,
   changeOrigin: true,
   onProxyReq: (proxyReq, req, res) => {
     console.log('Proxying request:', req.method, req.url);
@@ -32,11 +33,16 @@ const proxy = createProxyMiddleware({
   }
 });
 
-// Use the proxy for all routes
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'healthy', service: 'cors-proxy' });
+});
+
+// Use the proxy for all other routes
 app.use('/', proxy);
 
 const PORT = 3005;
 app.listen(PORT, () => {
   console.log(`CORS proxy server running on port ${PORT}`);
-  console.log(`Proxying /* to http://localhost:3004/*`);
+  console.log(`Proxying /* to ${marquezUrl}/*`);
 });

@@ -21,7 +21,7 @@ def create_namespace():
     
     namespace_data = {
         "name": NAMESPACE,
-        "description": "Data pipeline namespace for comprehensive column-level lineage tracking",
+        "description": "Data pipeline namespace for comprehensive lineage tracking",
         "ownerName": "data_engineer"
     }
     
@@ -46,7 +46,7 @@ def send_openlineage_event(event_data):
 
 def load_comprehensive_lineage():
     """Load comprehensive lineage with sample jobs"""
-    print("🔗 Loading comprehensive column-level lineage...")
+    print("🔗 Loading comprehensive lineage...")
     
     # Define sample jobs directly
     jobs = {
@@ -329,15 +329,15 @@ def create_input_datasets(input_datasets):
     return inputs
 
 def create_output_datasets(output_datasets, transforms):
-    """Create output dataset definitions with column lineage"""
+    """Create output dataset definitions"""
     outputs = []
     
     for dataset_name in output_datasets:
         # Find transforms for this dataset
         dataset_transforms = [t for t in transforms if t.get('table') == dataset_name or t.get('table') == 'spark_dataframe' or t.get('table') == 'dataframe']
         
-        # Create column lineage
-        column_lineage = {}
+        # Create field definitions
+        field_definitions = {}
         for i, transform in enumerate(dataset_transforms[:10]):  # Limit to first 10 transforms
             column_name = transform.get('column', f'column_{i}')
             transform_type = transform.get('transform_type', 'function')
@@ -359,14 +359,14 @@ def create_output_datasets(output_datasets, transforms):
                     "field": "data"
                 })
             
-            column_lineage[column_name] = {
+            field_definitions[column_name] = {
                 "inputFields": input_fields,
                 "transformationType": transform_type.upper(),
                 "transformationDescription": transform_desc,
                 "transformation": transform_code
             }
         
-        # Create output dataset with column lineage
+        # Create output dataset
         output = {
             "namespace": NAMESPACE,
             "name": dataset_name,
@@ -376,18 +376,18 @@ def create_output_datasets(output_datasets, transforms):
                     "_schemaURL": "https://raw.githubusercontent.com/OpenLineage/OpenLineage/main/spec/OpenLineage.json#/definitions/SchemaDatasetFacet",
                     "fields": [
                         {"name": col_name, "type": "string"} 
-                        for col_name in column_lineage.keys()
+                        for col_name in field_definitions.keys()
                     ]
                 }
             }
         }
         
-        # Add column lineage if we have transforms
-        if column_lineage:
-            output["facets"]["columnLineage"] = {
+        # Add field definitions if we have transforms
+        if field_definitions:
+            output["facets"]["fieldDefinitions"] = {
                 "_producer": "https://github.com/OpenLineage/OpenLineage/tree/0.45.0/integration/common",
-                "_schemaURL": "https://raw.githubusercontent.com/OpenLineage/OpenLineage/main/spec/OpenLineage.json#/definitions/ColumnLineageDatasetFacet",
-                "fields": column_lineage
+                "_schemaURL": "https://raw.githubusercontent.com/OpenLineage/OpenLineage/main/spec/OpenLineage.json#/definitions/FieldDefinitionsDatasetFacet",
+                "fields": field_definitions
             }
         
         outputs.append(output)
@@ -396,7 +396,7 @@ def create_output_datasets(output_datasets, transforms):
 
 def main():
     """Main function to load comprehensive lineage"""
-    print("🚀 Loading comprehensive column-level lineage into Marquez...")
+    print("🚀 Loading comprehensive lineage into Marquez...")
     
     # Create namespace
     if not create_namespace():
@@ -409,10 +409,10 @@ def main():
     print("\n✅ Comprehensive lineage loaded successfully!")
     print(f"🌐 View in Marquez UI: http://localhost:3001")
     print(f"📊 Namespace: {NAMESPACE}")
-    print("\n🎯 COMPREHENSIVE COLUMN-LEVEL LINEAGE IS NOW LOADED!")
+    print("\n🎯 COMPREHENSIVE LINEAGE IS NOW LOADED!")
     print("   - Navigate to the Jobs section in Marquez UI")
     print("   - You should see all your dbt, Spark, Python, and SQL jobs")
-    print("   - Each job will show detailed column-level transformations")
+    print("   - Each job will show detailed transformations")
     print("   - The lineage graph will show the complete data flow")
 
 if __name__ == "__main__":

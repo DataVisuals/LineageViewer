@@ -1,0 +1,39 @@
+# Production configuration for docker-compose
+services:
+  # CORS Proxy Service - Production
+  cors-proxy:
+    build:
+      context: .
+      dockerfile: Dockerfile.cors-proxy
+    ports:
+      - "3005:3005"
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3005/api/v1/namespaces"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # React App Service - Production
+  lineage-viewer:
+    build:
+      context: ./lineage-viewer-app
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - REACT_APP_API_URL=http://cors-proxy:3005
+    depends_on:
+      cors-proxy:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

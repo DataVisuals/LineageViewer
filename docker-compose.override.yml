@@ -1,0 +1,15 @@
+# Development override for docker-compose
+# This file is automatically loaded by docker-compose
+services:
+  # React App Service - Development
+  lineage-viewer:
+    environment:
+      - NODE_ENV=development
+      - REACT_APP_API_URL=http://host.docker.internal:3005
+    volumes:
+      - ./lineage-viewer-app/src:/app/src:ro
+      - ./lineage-viewer-app/public:/app/public:ro
+      - ./lineage-viewer-app/package.json:/app/package.json:ro
+    command: ["npm", "start"]
+    ports:
+      - "3000:3000"

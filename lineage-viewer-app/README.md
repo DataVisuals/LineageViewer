@@ -1,16 +1,16 @@
 # Lineage Viewer React App
 
-A beautiful, performant React application for visualizing OpenLineage data with interactive column-level lineage tracing.
+A beautiful, performant React application for visualizing OpenLineage data with interactive lineage tracing.
 
 ## Features
 
 - **Interactive Graph Visualization**: Built with React Flow for smooth, performant graph rendering
-- **Column-Level Lineage**: Trace data flow from source to destination at the column level
-- **Multiple View Modes**: Toggle between table-level and column-level views
+- **Data Lineage**: Trace data flow from source to destination
+- **Multiple View Modes**: Toggle between different visualization modes
 - **Real-time Data**: Fetches live data from Marquez API
 - **Modern UI**: Beautiful, responsive design with Tailwind CSS
-- **Column Tracing**: Click on any column to trace its lineage back to source
-- **Transform Details**: View detailed transformation information for each column
+- **Data Tracing**: Click on any element to trace its lineage back to source
+- **Transform Details**: View detailed transformation information
 
 ## Quick Start
 
@@ -46,7 +46,7 @@ npm run build
 - **LineageGraph**: Main graph visualization using React Flow
 - **LineageNode**: Custom node components for datasets and jobs
 - **ControlPanel**: View controls and filters
-- **ColumnTracer**: Modal for detailed column lineage tracing
+- **DataTracer**: Modal for detailed lineage tracing
 
 ### Services
 
@@ -61,15 +61,15 @@ npm run build
    - Mini-map for navigation
    - Auto-layout for optimal positioning
 
-2. **Column-Level Tracing**
-   - Click any column to see its lineage
+2. **Data Tracing**
+   - Click any element to see its lineage
    - Visual path from source to destination
    - Transform details and code
    - Input field mappings
 
 3. **View Modes**
    - Table-level view (dataset to dataset)
-   - Column-level view (column to column)
+   - Detailed view (element to element)
    - Transform visibility toggle
    - Filter by transform types
 
@@ -84,7 +84,7 @@ npm run build
 The app connects to Marquez API endpoints:
 - `/api/v1/namespaces/{namespace}/jobs` - Fetch jobs
 - `/api/v1/namespaces/{namespace}/datasets` - Fetch datasets
-- `/api/v1/namespaces/{namespace}/datasets/{dataset}` - Fetch dataset details with column lineage
+- `/api/v1/namespaces/{namespace}/datasets/{dataset}` - Fetch dataset details
 
 ## Styling
 

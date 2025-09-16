@@ -21,7 +21,7 @@ A comprehensive data lineage visualization tool that integrates with Marquez (Op
 ### 📊 **Rich Data Integration**
 - **Marquez API Support**: Full integration with OpenLineage metadata
 - **DBT Transformations**: Support for DBT models, tests, and SQL transformations
-- **Column-level Lineage**: Track field-level dependencies and transformations
+- **Data Lineage**: Track dependencies and transformations
 - **Code Display**: Show SQL, Python, and Spark code in tooltips
 
 ### 🎨 **Enhanced User Experience**
@@ -86,7 +86,7 @@ A comprehensive data lineage visualization tool that integrates with Marquez (Op
 ### Data Sources
 - **Marquez Jobs & Datasets**: Core lineage metadata
 - **DBT Models**: SQL transformations and tests
-- **Column Lineage**: Field-level dependency tracking
+- **Data Lineage**: Dependency tracking
 - **Transform Code**: SQL, Python, and Spark code extraction
 
 ## 📁 Project Structure
@@ -156,7 +156,7 @@ The viewer supports DBT transformations with:
 
 - **Model Visualization**: DBT models as datasets in the graph
 - **SQL Code Display**: Show DBT SQL transformations in tooltips
-- **Column Lineage**: Track field-level dependencies
+- **Data Lineage**: Track dependencies
 - **Test Integration**: DBT tests as separate jobs
 - **Layer Support**: Distinguish between staging and marts layers
 

@@ -1,0 +1,22 @@
+# Use Node.js 18 as base image
+FROM node:18-alpine
+
+# Set working directory
+WORKDIR /app
+
+# Copy the CORS proxy file
+COPY cors-proxy.js ./
+
+# Install dependencies
+RUN npm init -y && npm install express http-proxy-middleware cors
+
+# Install wget for health checks
+RUN apk add --no-cache wget
+
+# Expose port
+EXPOSE 3005
+
+# Health check removed for simplicity
+
+# Start the CORS proxy
+CMD ["node", "cors-proxy.js"]
